@@ -2,8 +2,9 @@ import json
 import os
 from urllib.parse import urlencode
 
+import boto3
 import requests
-from flask import abort, make_response, request, jsonify
+from flask import abort, jsonify, make_response, redirect, request
 
 from app import app
 from app import db
@@ -77,12 +78,31 @@ def init_export_works():
         abort_json(422, 'supported formats are: "csv"')
 
 
-@app.route('/export/<export_id>', methods=["GET"])
+@app.route('/export/<export_id>/status', methods=["GET"])
 def lookup_export(export_id):
     if not (export := CsvExport.query.get(export_id)):
         abort_json(404, f'Export {export_id} does not exist.')
 
     return jsonify(export.to_dict())
+
+
+@app.route('/export/<export_id>/download', methods=["GET"])
+def download_export(export_id):
+    if not (export := CsvExport.query.get(export_id)):
+        abort_json(404, f'Export {export_id} does not exist.')
+
+    if not export.status == 'finished':
+        abort_json(422, f'Export {export_id} is not finished.')
+
+    s3_client = boto3.client('s3')
+    presigned_url = s3_client.generate_presigned_url(
+        'get_object',
+        Params={'Bucket': 'openalex-query-exports', 'Key': f'{export.id}.csv'},
+        ExpiresIn=300
+    )
+
+    return redirect(presigned_url, 302)
+
 
 @app.route('/', methods=["GET", "POST"])
 def base_endpoint():

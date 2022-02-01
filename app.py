@@ -43,3 +43,5 @@ class NullPoolSQLAlchemy(SQLAlchemy):
 db = NullPoolSQLAlchemy(app, session_options={"autoflush": False})
 
 Compress(app)
+
+app_url = 'https://openalex-formatter.herokuapp.com'

@@ -2,7 +2,7 @@ import datetime
 
 import shortuuid
 
-from app import db
+from app import app_url, db
 
 
 class CsvExport(db.Model):
@@ -21,7 +21,7 @@ class CsvExport(db.Model):
         self.progress = 0
         self.submitted = datetime.datetime.utcnow()
         self.progress_updated = self.submitted
-        self.url = f'https://openalex-formatter.herokuapp.com/export/{self.id}'
+        self.url = f'{app_url}/export/{self.id}/status'
         super().__init__(**kwargs)
 
     def to_dict(self):
