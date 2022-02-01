@@ -86,12 +86,12 @@ def export_csv(export):
 
         page = 1
         per_page = 50
-        max_page = 2000
+        max_page = 200
 
         while page <= max_page:
             query_url = f'{export.query_url}&page={page}&per_page={per_page}'
             result = requests.get(query_url).json()
-            max_page = ceil(result['meta']['count'] / per_page)
+            max_page = min(ceil(result['meta']['count'] / per_page), 200)
 
             export.progress = page / max_page
             export.progress_updated = datetime.datetime.utcnow()
