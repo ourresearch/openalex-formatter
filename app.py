@@ -31,6 +31,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL').replace('postg
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config['SQLALCHEMY_ECHO'] = (os.getenv('SQLALCHEMY_ECHO', False) == 'True')
 
+slice_and_dice_api = os.getenv('SLICE_AND_DICE_API_URL')
+
 
 class NullPoolSQLAlchemy(SQLAlchemy):
     def apply_driver_hacks(self, flask_app, info, options):
