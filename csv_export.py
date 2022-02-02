@@ -37,4 +37,4 @@ class CsvExport(db.Model):
         }
 
     def __repr__(self):
-        return f'<CsvExport ({self.id}, {self.entity_type}, {self.query})>'
+        return f'<CsvExport ({self.id}, {self.query_url}, {self.status})>'
