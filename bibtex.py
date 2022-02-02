@@ -44,7 +44,7 @@ def dump_bibtex(work):
     entry = {
         'ENTRYTYPE': entry_type,
         'ID': work_id,
-        'biburl': f'{work_id}.bib'
+        'biburl': f'{work_id}.bib'.replace('openalex.org', 'api.openalex.org/works')
     }
 
     if doi := work.get('doi'):
