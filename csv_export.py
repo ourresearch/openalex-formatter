@@ -21,7 +21,7 @@ class CsvExport(db.Model):
         self.progress = 0
         self.submitted = datetime.datetime.utcnow()
         self.progress_updated = self.submitted
-        self.progress_url = f'{app_url}/export/{self.id}/status'
+        self.progress_url = f'{app_url}/export/{self.id}'
         super().__init__(**kwargs)
 
     def to_dict(self):

@@ -78,7 +78,7 @@ def init_export_works():
         abort_json(422, 'supported formats are: "csv"')
 
 
-@app.route('/export/<export_id>/status', methods=["GET"])
+@app.route('/export/<export_id>', methods=["GET"])
 def lookup_export(export_id):
     if not (export := CsvExport.query.get(export_id)):
         abort_json(404, f'Export {export_id} does not exist.')
