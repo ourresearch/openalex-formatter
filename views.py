@@ -94,10 +94,20 @@ def download_export(export_id):
     if not export.status == 'finished':
         abort_json(422, f'Export {export_id} is not finished.')
 
+    if export.submitted:
+        filename = f'works-{export.submitted.strftime("%Y-%m-%dT%H-%M-%S")}.csv'
+    else:
+        filename = f'{export_id}.csv'
+
     s3_client = boto3.client('s3')
     presigned_url = s3_client.generate_presigned_url(
         'get_object',
-        Params={'Bucket': 'openalex-query-exports', 'Key': f'{export.id}.csv'},
+        Params={
+            'Bucket': 'openalex-query-exports',
+            'Key': f'{export.id}.csv',
+            'ResponseContentDisposition': f'attachment; filename={filename}',
+            'ResponseContentType': 'text/csv'
+        },
         ExpiresIn=300
     )
 
