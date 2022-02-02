@@ -8,6 +8,7 @@ from flask import abort, jsonify, make_response, redirect, request
 
 from app import app
 from app import db
+from bibtex import dump_bibtex
 from csv_export import CsvExport
 
 
@@ -112,6 +113,34 @@ def download_export(export_id):
     )
 
     return redirect(presigned_url, 302)
+
+
+@app.route('/works/<work_id>.<export_format>', strict_slashes=False, methods=["GET"])
+def format_single_work(work_id, export_format):
+    export_format = export_format and export_format.strip().lower()
+
+    if not export_format:
+        abort_json(400, '"format" argument is required')
+    if export_format == 'bib':
+        query_url = f'https://api.openalex.org/works/{work_id}'
+        response_json = {}
+
+        try:
+            query_response = requests.get(query_url)
+
+            if not query_response.status_code == 200:
+                return make_response(query_response.content, query_response.status_code)
+
+            if not (response_json := query_response.json()):
+                raise requests.exceptions.RequestException
+        except requests.exceptions.RequestException:
+            abort_json(500, f"There was an error submitting your request to {query_url}.")
+
+        response = make_response(dump_bibtex(response_json))
+        response.headers['Content-Type'] = 'application/x-bibtex; charset=utf-8'
+        return response
+    else:
+        abort_json(422, 'supported formats are: "bib"')
 
 
 @app.route('/', methods=["GET", "POST"])
