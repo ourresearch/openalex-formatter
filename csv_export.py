@@ -13,7 +13,7 @@ class CsvExport(db.Model):
     result_url = db.Column(db.Text)
     submitted = db.Column(db.DateTime)
     progress_updated = db.Column(db.DateTime)
-    url = db.Column(db.Text)
+    progress_url = db.Column(db.Text)
 
     def __init__(self, **kwargs):
         self.id = shortuuid.uuid()
@@ -21,7 +21,7 @@ class CsvExport(db.Model):
         self.progress = 0
         self.submitted = datetime.datetime.utcnow()
         self.progress_updated = self.submitted
-        self.url = f'{app_url}/export/{self.id}/status'
+        self.progress_url = f'{app_url}/export/{self.id}/status'
         super().__init__(**kwargs)
 
     def to_dict(self):
@@ -33,7 +33,7 @@ class CsvExport(db.Model):
             'result_url': self.result_url,
             'submitted': self.submitted and self.submitted.isoformat(),
             'progress_updated': self.progress_updated and self.progress_updated.isoformat(),
-            'url': self.url
+            'progress_url': self.progress_url
         }
 
     def __repr__(self):
