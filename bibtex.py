@@ -47,6 +47,9 @@ def dump_bibtex(work):
         'biburl': f'{work_id}.bib'
     }
 
+    if doi := work.get('doi'):
+        entry['doi'] = doi.replace('https://doi.org/', '')
+
     bib_db = BibDatabase()
     _populate_entry(entry, work)
 
