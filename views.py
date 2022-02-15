@@ -50,31 +50,32 @@ def init_export_works():
     if export_format == 'csv':
         query_url = 'https://api.openalex.org/works'
         query_filter = request.args.get('filter')
+
         if query_filter:
             query_string = urlencode({'filter': query_filter})
             query_url = f'{query_url}?{query_string}'
 
-            response_json = {}
-            try:
-                query_response = requests.get(query_url)
+        response_json = {}
+        try:
+            query_response = requests.get(query_url)
 
-                if not query_response.status_code == 200:
-                    return make_response(query_response.content, query_response.status_code)
+            if not query_response.status_code == 200:
+                return make_response(query_response.content, query_response.status_code)
 
-                if not (response_json := query_response.json()):
-                    raise requests.exceptions.RequestException
+            if not (response_json := query_response.json()):
+                raise requests.exceptions.RequestException
 
-                if not response_json.get('meta', {}).get('page'):
-                    raise requests.exceptions.RequestException
+            if not response_json.get('meta', {}).get('page'):
+                raise requests.exceptions.RequestException
 
-                new_export = CsvExport(query_url=query_url)
-                db.session.merge(new_export)
-                db.session.commit()
-                return jsonify(new_export.to_dict())
-            except requests.exceptions.RequestException:
-                abort_json(500, f"There was an error submitting your request to {query_url}.")
+            new_export = CsvExport(query_url=query_url)
+            db.session.merge(new_export)
+            db.session.commit()
+            return jsonify(new_export.to_dict())
+        except requests.exceptions.RequestException:
+            abort_json(500, f"There was an error submitting your request to {query_url}.")
 
-            return jsonify(response_json)
+        return jsonify(response_json)
     else:
         abort_json(422, 'supported formats are: "csv"')
 
@@ -154,3 +155,4 @@ def base_endpoint():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True, threaded=True)
+

@@ -3,6 +3,7 @@ import datetime
 import tempfile
 from math import ceil
 from time import sleep, time
+from urllib.parse import urlparse, urlencode, urlunparse, parse_qs
 
 import boto3
 import requests
@@ -90,7 +91,16 @@ def export_csv(export):
         max_page = 200
 
         while page <= max_page:
-            query_url = f'{export.query_url}&page={page}&per_page={per_page}'
+            parsed_query_url = urlparse(export.query_url)
+            query_args = parse_qs(parsed_query_url.query)
+            query_args['page'] = page
+            query_args['per_page'] = per_page
+            parsed_query_url = parsed_query_url._replace(
+                query=urlencode(query_args, doseq=True)
+            )
+
+            query_url = urlunparse(parsed_query_url)
+
             result = requests.get(query_url).json()
             max_page = min(ceil(result['meta']['count'] / per_page), 200)
 
@@ -194,3 +204,4 @@ def fetch_export_id():
 
 if __name__ == "__main__":
     worker_run()
+
