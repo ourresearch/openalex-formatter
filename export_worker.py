@@ -12,6 +12,7 @@ from sqlalchemy import text
 from app import app_url
 from app import db, logger
 from csv_export import CsvExport
+from emailer import send_email
 from util import elapsed
 
 CSV_FIELDS = [
@@ -76,8 +77,24 @@ def worker_run():
             export.progress_updated = datetime.datetime.utcnow()
             db.session.merge(export)
             db.session.commit()
+            email_result_link(export)
         else:
             sleep(1)
+
+
+def email_result_link(export):
+    send_email(
+        export.requester_email,
+        "Your OpenAlex Works download is ready",
+        "csv_export_ready",
+        {
+            "data": {
+                "result_url": export.result_url,
+                "query_url": export.query_url,
+            }
+        },
+        for_real=True
+    )
 
 
 def export_csv(export):

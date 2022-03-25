@@ -1,5 +1,7 @@
+import datetime
 import json
 import os
+import re
 from urllib.parse import urlencode
 
 import boto3
@@ -43,7 +45,13 @@ def after_request(response):
 @app.route('/works', strict_slashes=False, methods=["GET"])
 def init_export_works():
     export_format = request.args.get('format')
+    email = request.args.get('email', '').strip()
     export_format = export_format and export_format.strip().lower()
+
+    if not email:
+        abort_json(400, '"email" argument is required')
+    if not re.match(r'^.+@.+\..+$', email):
+        abort_json(400, f"email argument {email} doesn't look like an email address")
 
     if not export_format:
         abort_json(400, '"format" argument is required')
@@ -56,6 +64,16 @@ def init_export_works():
             query_url = f'{query_url}?{query_string}'
 
         response_json = {}
+
+        duplicate_export = CsvExport.query.filter(
+            CsvExport.requester_email == email,
+            CsvExport.query_url == query_url,
+            CsvExport.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(minutes=15)
+        ).first()
+
+        if duplicate_export:
+            return jsonify(duplicate_export.to_dict())
+
         try:
             query_response = requests.get(query_url)
 
@@ -68,7 +86,7 @@ def init_export_works():
             if not response_json.get('meta', {}).get('page'):
                 raise requests.exceptions.RequestException
 
-            new_export = CsvExport(query_url=query_url)
+            new_export = CsvExport(requester_email=email, query_url=query_url)
             db.session.merge(new_export)
             db.session.commit()
             return jsonify(new_export.to_dict())

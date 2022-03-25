@@ -14,9 +14,10 @@ class CsvExport(db.Model):
     submitted = db.Column(db.DateTime)
     progress_updated = db.Column(db.DateTime)
     progress_url = db.Column(db.Text)
+    requester_email = db.Column(db.Text, nullable=False)
 
     def __init__(self, **kwargs):
-        self.id = shortuuid.uuid()
+        self.id = f'works-csv-{shortuuid.uuid()}'
         self.status = "submitted"
         self.progress = 0
         self.submitted = datetime.datetime.utcnow()
@@ -27,6 +28,7 @@ class CsvExport(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
+            'requester_email': self.requester_email,
             'query_url': self.query_url,
             'status': self.status,
             'progress': self.progress,
@@ -37,4 +39,4 @@ class CsvExport(db.Model):
         }
 
     def __repr__(self):
-        return f'<CsvExport ({self.id}, {self.query_url}, {self.status})>'
+        return f'<CsvExport ({self.id}, {self.requester_email}, {self.query_url}, {self.status})>'
