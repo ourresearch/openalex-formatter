@@ -44,5 +44,5 @@ db = NullPoolSQLAlchemy(app, session_options={"autoflush": False})
 
 Compress(app)
 
-app_url = 'https://openalex-formatter.herokuapp.com'
+app_url = os.getenv('APP_URL')
 mailgun_api_key = os.getenv('MAILGUN_API_KEY')
