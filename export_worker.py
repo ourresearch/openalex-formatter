@@ -74,6 +74,7 @@ def worker_run():
             logger.info(f'uploaded {csv_filename} to {s3_object_name}')
             export.result_url = f'{app_url}/export/{export.id}/download'
             export.status = 'finished'
+            export.progress = 1
             export.progress_updated = datetime.datetime.utcnow()
             db.session.merge(export)
             db.session.commit()
@@ -104,13 +105,14 @@ def export_csv(export):
         writer.writeheader()
 
         page = 1
-        per_page = 50
-        max_page = 200
+        cursor = '*'
+        per_page = 200
+        max_page = 500
 
-        while page <= max_page:
+        while page <= max_page and cursor is not None:
             parsed_query_url = urlparse(export.query_url)
             query_args = parse_qs(parsed_query_url.query)
-            query_args['page'] = page
+            query_args['cursor'] = cursor
             query_args['per_page'] = per_page
             parsed_query_url = parsed_query_url._replace(
                 query=urlencode(query_args, doseq=True)
@@ -119,7 +121,8 @@ def export_csv(export):
             query_url = urlunparse(parsed_query_url)
 
             result = requests.get(query_url).json()
-            max_page = min(ceil(result['meta']['count'] / per_page), 200)
+            max_page = min(ceil(result['meta']['count'] / per_page), max_page)
+            cursor = result['meta']['next_cursor']
 
             export.progress = page / max_page
             export.progress_updated = datetime.datetime.utcnow()
