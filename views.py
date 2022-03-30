@@ -12,6 +12,7 @@ from app import app
 from app import db
 from bibtex import dump_bibtex
 from csv_export import CsvExport
+from csv_export_email import CsvExportEmail
 
 
 def abort_json(status_code, msg):
@@ -45,11 +46,11 @@ def after_request(response):
 @app.route('/works', strict_slashes=False, methods=["GET"])
 def init_export_works():
     export_format = request.args.get('format')
-    email = request.args.get('email', '').strip()
+    email = request.args.get('email')
     export_format = export_format and export_format.strip().lower()
 
-    if not email:
-        abort_json(400, '"email" argument is required')
+    if email:
+        email = email.strip()
     if not re.match(r'^.+@.+\..+$', email):
         abort_json(400, f"email argument {email} doesn't look like an email address")
 
@@ -63,37 +64,38 @@ def init_export_works():
             query_string = urlencode({'filter': query_filter})
             query_url = f'{query_url}?{query_string}'
 
-        response_json = {}
-
-        duplicate_export = CsvExport.query.filter(
-            CsvExport.requester_email == email,
+        export = CsvExport.query.filter(
             CsvExport.query_url == query_url,
             CsvExport.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(minutes=15)
         ).first()
 
-        if duplicate_export:
-            return jsonify(duplicate_export.to_dict())
+        if not export:
+            try:
+                test_query_response = requests.get(query_url)
 
-        try:
-            query_response = requests.get(query_url)
+                if not test_query_response.status_code == 200:
+                    return make_response(test_query_response.content, test_query_response.status_code)
 
-            if not query_response.status_code == 200:
-                return make_response(query_response.content, query_response.status_code)
+                if not (response_json := test_query_response.json()):
+                    raise requests.exceptions.RequestException
 
-            if not (response_json := query_response.json()):
-                raise requests.exceptions.RequestException
+                if not response_json.get('meta', {}).get('page'):
+                    raise requests.exceptions.RequestException
 
-            if not response_json.get('meta', {}).get('page'):
-                raise requests.exceptions.RequestException
+                export = CsvExport(query_url=query_url)
+                db.session.merge(export)
+            except requests.exceptions.RequestException:
+                abort_json(500, f"There was an error submitting your request to {query_url}.")
 
-            new_export = CsvExport(requester_email=email, query_url=query_url)
-            db.session.merge(new_export)
-            db.session.commit()
-            return jsonify(new_export.to_dict())
-        except requests.exceptions.RequestException:
-            abort_json(500, f"There was an error submitting your request to {query_url}.")
+        if email:
+            export_email = CsvExportEmail(export_id=export.id, requester_email=email)
+            db.session.merge(export_email)
 
-        return jsonify(response_json)
+        db.session.commit()
+
+
+
+        return jsonify(export.to_dict())
     else:
         abort_json(422, 'supported formats are: "csv"')
 
