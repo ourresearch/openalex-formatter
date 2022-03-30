@@ -51,8 +51,8 @@ def init_export_works():
 
     if email:
         email = email.strip()
-    if not re.match(r'^.+@.+\..+$', email):
-        abort_json(400, f"email argument {email} doesn't look like an email address")
+        if not re.match(r'^.+@.+\..+$', email):
+            abort_json(400, f"email argument {email} doesn't look like an email address")
 
     if not export_format:
         abort_json(400, '"format" argument is required')
