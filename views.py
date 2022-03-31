@@ -58,10 +58,16 @@ def init_export_works():
         abort_json(400, '"format" argument is required')
     if export_format == 'csv':
         query_url = 'https://api.openalex.org/works'
-        query_filter = request.args.get('filter')
+        query_args = {}
 
-        if query_filter:
-            query_string = urlencode({'filter': query_filter})
+        if query_filter := request.args.get('filter'):
+            query_args['filter'] = query_filter
+
+        if query_sort := request.args.get('sort'):
+            query_args['sort'] = query_sort
+
+        if query_args:
+            query_string = urlencode(query_args)
             query_url = f'{query_url}?{query_string}'
 
         export = CsvExport.query.filter(
