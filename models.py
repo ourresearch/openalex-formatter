@@ -18,6 +18,8 @@ class Export(db.Model):
     progress_url = db.Column(db.Text)
 
     def __init__(self, **kwargs):
+        if 'format' in kwargs:
+            self.format = kwargs['format']
         self.id = f'works-{self.format}-{shortuuid.uuid()}'
         self.status = "submitted"
         self.progress = 0
@@ -31,6 +33,7 @@ class Export(db.Model):
             'id': self.id,
             'query_url': self.query_url,
             'status': self.status,
+            'format': self.format,
             'progress': self.progress,
             'result_url': self.result_url,
             'submitted': self.submitted and self.submitted.isoformat(),

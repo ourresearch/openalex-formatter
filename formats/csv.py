@@ -1,12 +1,11 @@
 import csv
-import datetime
 import tempfile
 from math import ceil
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 import requests
 
-from app import db, logger
+from app import logger
+from formats.util import update_export_progress, construct_query_url
 
 CSV_FIELDS = [
     'id',
@@ -138,24 +137,12 @@ def export_csv(export):
         max_page = 500
 
         while page <= max_page and cursor is not None:
-            parsed_query_url = urlparse(export.query_url)
-            query_args = parse_qs(parsed_query_url.query)
-            query_args['cursor'] = cursor
-            query_args['per_page'] = per_page
-            parsed_query_url = parsed_query_url._replace(
-                query=urlencode(query_args, doseq=True)
-            )
-
-            query_url = urlunparse(parsed_query_url)
-
+            query_url = construct_query_url(cursor, export, per_page)
             result = requests.get(query_url).json()
             max_page = min(ceil(result['meta']['count'] / per_page), max_page)
             cursor = result['meta']['next_cursor']
 
-            export.progress = page / max_page
-            export.progress_updated = datetime.datetime.utcnow()
-            db.session.merge(export)
-            db.session.commit()
+            update_export_progress(export, max_page, page)
 
             for work in result['results']:
                 writer.writerow(row_dict(work))
