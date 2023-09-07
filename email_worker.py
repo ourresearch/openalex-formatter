@@ -1,12 +1,16 @@
 import datetime
+import os
 from time import sleep, time
 
+import sentry_sdk
 from sqlalchemy import text
 
 from app import db, logger
 from models import Export, ExportEmail
 from emailer import send_email
 from util import elapsed
+
+sentry_sdk.init(dsn=os.environ.get('SENTRY_DSN'),)
 
 
 def worker_run():

@@ -7,11 +7,15 @@ from urllib.parse import urlencode
 import boto3
 import requests
 from flask import abort, jsonify, make_response, redirect, request
+import sentry_sdk
 
 from app import app
 from app import db
 from bibtex import dump_bibtex
 from models import Export, ExportEmail
+
+
+sentry_sdk.init(dsn=os.environ.get('SENTRY_DSN'),)
 
 
 def abort_json(status_code, msg):

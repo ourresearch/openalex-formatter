@@ -1,7 +1,9 @@
 import datetime
+import os
 from time import sleep, time
 
 import boto3
+import sentry_sdk
 from sqlalchemy import text
 
 from app import app_url
@@ -9,7 +11,10 @@ from app import db, logger
 from formats.csv import export_csv
 from formats.wos_plaintext import export_wos
 from models import Export
+
 from util import elapsed
+
+sentry_sdk.init(dsn=os.environ.get('SENTRY_DSN'),)
 
 
 def worker_run():
