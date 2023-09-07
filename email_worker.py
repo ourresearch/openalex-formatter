@@ -4,8 +4,7 @@ from time import sleep, time
 from sqlalchemy import text
 
 from app import db, logger
-from csv_export import CsvExport
-from csv_export_email import CsvExportEmail
+from models import Export, ExportEmail
 from emailer import send_email
 from util import elapsed
 
@@ -13,11 +12,11 @@ from util import elapsed
 def worker_run():
     while True:
         if email_request_id := fetch_email_request_id():
-            if not (email_request := CsvExportEmail.query.get(email_request_id)):
+            if not (email_request := ExportEmail.query.get(email_request_id)):
                 # not sure how this happened, but not much we can do
                 continue
 
-            if not (csv_export := CsvExport.query.get(email_request.export_id)):
+            if not (csv_export := Export.query.get(email_request.export_id)):
                 # same thing
                 continue
 
@@ -49,21 +48,21 @@ def fetch_email_request_id():
 
     fetch_query = text("""
         with fetched_request as (
-            select csv_export_email.id
+            select export_email.id
             from 
-                csv_export_email
-                join csv_export on csv_export_email.export_id = csv_export.id
+                export_email
+                join export on export_email.export_id = export.id
             where 
-                csv_export.status = 'finished'
-                and csv_export_email.send_started is null
-            order by csv_export_email.requested_at
+                export.status = 'finished'
+                and export_email.send_started is null
+            order by export_email.requested_at
             limit 1
             for update skip locked
         )
-        update csv_export_email
+        update export_email
         set send_started = now()
         from fetched_request
-        where csv_export_email.id = fetched_request.id
+        where export_email.id = fetched_request.id
         returning fetched_request.id;
     """)
 

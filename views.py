@@ -11,8 +11,7 @@ from flask import abort, jsonify, make_response, redirect, request
 from app import app
 from app import db
 from bibtex import dump_bibtex
-from csv_export import CsvExport
-from csv_export_email import CsvExportEmail
+from models import Export, ExportEmail
 
 
 def abort_json(status_code, msg):
@@ -56,7 +55,7 @@ def init_export_works():
 
     if not export_format:
         abort_json(400, '"format" argument is required')
-    if export_format == 'csv':
+    if export_format == 'csv' or export_format == 'wos-plaintext':
         query_url = 'https://api.openalex.org/works'
         query_args = {}
 
@@ -66,13 +65,17 @@ def init_export_works():
         if query_sort := request.args.get('sort'):
             query_args['sort'] = query_sort
 
+        if query_search := request.args.get('search'):
+            query_args['search'] = query_search
+
         if query_args:
             query_string = urlencode(query_args)
             query_url = f'{query_url}?{query_string}'
 
-        export = CsvExport.query.filter(
-            CsvExport.query_url == query_url,
-            CsvExport.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(minutes=15)
+        export = Export.query.filter(
+            Export.format == export_format,
+            Export.query_url == query_url,
+            Export.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(minutes=15)
         ).first()
 
         if not export:
@@ -88,27 +91,24 @@ def init_export_works():
                 if not response_json.get('meta', {}).get('page'):
                     raise requests.exceptions.RequestException
 
-                export = CsvExport(query_url=query_url)
+                export = Export(query_url=query_url, format=export_format)
                 db.session.merge(export)
             except requests.exceptions.RequestException:
                 abort_json(500, f"There was an error submitting your request to {query_url}.")
 
         if email:
-            export_email = CsvExportEmail(export_id=export.id, requester_email=email)
+            export_email = ExportEmail(export_id=export.id, requester_email=email)
             db.session.merge(export_email)
 
         db.session.commit()
-
-
-
         return jsonify(export.to_dict())
     else:
-        abort_json(422, 'supported formats are: "csv"')
+        abort_json(422, 'supported formats are: "csv" or "wos-plaintext"')
 
 
 @app.route('/export/<export_id>', methods=["GET"])
 def lookup_export(export_id):
-    if not (export := CsvExport.query.get(export_id)):
+    if not (export := Export.query.get(export_id)):
         abort_json(404, f'Export {export_id} does not exist.')
 
     return jsonify(export.to_dict())
@@ -116,23 +116,30 @@ def lookup_export(export_id):
 
 @app.route('/export/<export_id>/download', methods=["GET"])
 def download_export(export_id):
-    if not (export := CsvExport.query.get(export_id)):
+    if not (export := Export.query.get(export_id)):
         abort_json(404, f'Export {export_id} does not exist.')
+
+    if export.format == 'csv':
+        file_format = 'csv'
+    elif export.format == 'wos-plaintext':
+        file_format = 'txt'
+    else:
+        abort_json(422, f'Export {export_id} is not a supported format.')
 
     if not export.status == 'finished':
         abort_json(422, f'Export {export_id} is not finished.')
 
     if export.submitted:
-        filename = f'works-{export.submitted.strftime("%Y-%m-%dT%H-%M-%S")}.csv'
+        filename = f'works-{export.submitted.strftime("%Y-%m-%dT%H-%M-%S")}.{file_format}'
     else:
-        filename = f'{export_id}.csv'
+        filename = f'{export_id}.{file_format}'
 
     s3_client = boto3.client('s3')
     presigned_url = s3_client.generate_presigned_url(
         'get_object',
         Params={
             'Bucket': 'openalex-query-exports',
-            'Key': f'{export.id}.csv',
+            'Key': f'{export.id}.{file_format}',
             'ResponseContentDisposition': f'attachment; filename={filename}',
             'ResponseContentType': 'text/csv'
         },
