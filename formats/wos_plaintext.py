@@ -60,12 +60,18 @@ def process_pub_type(work):
 
 def process_authors_au(work):
     author_names = [authorship.get('author').get('display_name') for authorship in work.get('authorships')]
-    return [f'AU {author_names[0]}'] + [f'   {name}' for name in author_names[1:]]
+    if author_names:
+        return [f'AU {author_names[0]}'] + [f'   {name}' for name in author_names[1:]]
+    else:
+        return [f'AU ']
 
 
 def process_authors_af(work):
     author_names = [authorship.get('author').get('display_name') for authorship in work.get('authorships')]
-    return [f'AF {author_names[0]}'] + [f'   {name}' for name in author_names[1:]]
+    if author_names:
+        return [f'AF {author_names[0]}'] + [f'   {name}' for name in author_names[1:]]
+    else:
+        return [f'AF ']
 
 
 def process_source_name(work):
