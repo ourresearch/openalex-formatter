@@ -9,6 +9,7 @@ from sqlalchemy import text
 from app import app_url
 from app import db, logger
 from formats.csv import export_csv
+from formats.group_bys import export_group_bys_csv
 from formats.wos_plaintext import export_wos
 from models import Export
 
@@ -30,6 +31,9 @@ def worker_run():
             elif export.format == 'wos-plaintext':
                 filename = export_wos(export)
                 file_format = 'txt'
+            elif export.format == "group-bys-csv":
+                filename = export_group_bys_csv(export)
+                file_format = 'csv'
             else:
                 raise ValueError(f'unknown format {export.format}')
 

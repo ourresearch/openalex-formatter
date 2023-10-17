@@ -59,7 +59,7 @@ def init_export_works():
 
     if not export_format:
         abort_json(400, '"format" argument is required')
-    if export_format == 'csv' or export_format == 'wos-plaintext':
+    if export_format == 'csv' or export_format == 'wos-plaintext' or export_format == 'group-bys-csv':
         query_url = 'https://api.openalex.org/works'
         query_args = {}
 
@@ -72,6 +72,9 @@ def init_export_works():
         if query_search := request.args.get('search'):
             query_args['search'] = query_search
 
+        if query_group_bys_fields := request.args.get('group-bys'):
+            query_args['group_bys'] = query_group_bys_fields
+
         if query_args:
             query_string = urlencode(query_args)
             query_url = f'{query_url}?{query_string}'
@@ -83,22 +86,24 @@ def init_export_works():
         ).first()
 
         if not export:
-            try:
-                test_query_response = requests.get(query_url)
+            if export_format != 'csv-group-bys':
+                try:
+                    test_query_response = requests.get(query_url)
 
-                if not test_query_response.status_code == 200:
-                    return make_response(test_query_response.content, test_query_response.status_code)
+                    if not test_query_response.status_code == 200:
+                        return make_response(test_query_response.content, test_query_response.status_code)
 
-                if not (response_json := test_query_response.json()):
-                    raise requests.exceptions.RequestException
+                    if not (response_json := test_query_response.json()):
+                        raise requests.exceptions.RequestException
 
-                if not response_json.get('meta', {}).get('page'):
-                    raise requests.exceptions.RequestException
+                    if not response_json.get('meta', {}).get('page'):
+                        raise requests.exceptions.RequestException
 
-                export = Export(query_url=query_url, format=export_format)
-                db.session.merge(export)
-            except requests.exceptions.RequestException:
-                abort_json(500, f"There was an error submitting your request to {query_url}.")
+                except requests.exceptions.RequestException:
+                    abort_json(500, f"There was an error submitting your request to {query_url}.")
+
+            export = Export(query_url=query_url, format=export_format)
+            db.session.merge(export)
 
         if email:
             export_email = ExportEmail(export_id=export.id, requester_email=email)
@@ -107,7 +112,7 @@ def init_export_works():
         db.session.commit()
         return jsonify(export.to_dict())
     else:
-        abort_json(422, 'supported formats are: "csv" or "wos-plaintext"')
+        abort_json(422, 'supported formats are: "csv" or "csv-group-bys" or "wos-plaintext"')
 
 
 @app.route('/export/<export_id>', methods=["GET"])
@@ -190,6 +195,6 @@ def base_endpoint():
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 8000))
     app.run(host='0.0.0.0', port=port, debug=True, threaded=True)
 
