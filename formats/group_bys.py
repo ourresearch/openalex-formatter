@@ -66,7 +66,7 @@ def fetch_group_data(query, group_by, per_page=50):
     groups = []
     cursor = "*"
     while cursor is not None and len(groups) < GROUP_LIMIT:
-        url = f"{query}&group_by={group_by}&per_page={per_page}&cursor={cursor}&mailto=dev@ourresearch.org"
+        url = f"{query}&group_by={group_by}&per_page={per_page}&cursor={cursor}&mailto=team@ourresearch.org"
         result = get_request(url)
         cursor = result["meta"]["next_cursor"]
         for group in result["group_by"]:
