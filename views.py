@@ -132,6 +132,8 @@ def download_export(export_id):
         file_format = 'csv'
     elif export.format == 'wos-plaintext':
         file_format = 'txt'
+    elif export.format == "group-bys-csv":
+        file_format = 'csv'
     else:
         abort_json(422, f'Export {export_id} is not a supported format.')
 
