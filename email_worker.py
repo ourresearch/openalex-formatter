@@ -5,6 +5,7 @@ from time import sleep, time
 import sentry_sdk
 from sqlalchemy import text
 
+from app import app
 from app import db, logger
 from models import Export, ExportEmail
 from emailer import send_email
@@ -71,11 +72,13 @@ def fetch_email_request_id():
     """)
 
     job_time = time()
-    export_request_id = db.engine.execute(fetch_query.execution_options(autocommit=True)).scalar()
-    logger.info(f'fetched export email request {export_request_id}, took {elapsed(job_time)} seconds')
+    with db.engine.connect() as connection:
+        export_request_id = connection.execute(fetch_query.execution_options(autocommit=True)).scalar()
+        logger.info(f'fetched export email request {export_request_id}, took {elapsed(job_time)} seconds')
     return export_request_id
 
 
 if __name__ == "__main__":
-    worker_run()
+    with app.app_context():
+        worker_run()
 

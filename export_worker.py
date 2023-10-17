@@ -6,6 +6,7 @@ import boto3
 import sentry_sdk
 from sqlalchemy import text
 
+from app import app
 from app import app_url
 from app import db, logger
 from formats.csv import export_csv
@@ -72,11 +73,14 @@ def fetch_export_id():
     """)
 
     job_time = time()
-    export_id = db.engine.execute(fetch_query.execution_options(autocommit=True)).scalar()
+    with db.engine.connect() as connection:
+        result = connection.execute(fetch_query.execution_options(autocommit=True))
+        export_id = result.scalar()
     logger.info(f'fetched export {export_id}, took {elapsed(job_time)} seconds')
     return export_id
 
 
 if __name__ == "__main__":
-    worker_run()
+    with app.app_context():
+        worker_run()
 
