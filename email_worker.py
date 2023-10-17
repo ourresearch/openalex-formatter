@@ -73,7 +73,9 @@ def fetch_email_request_id():
 
     job_time = time()
     with db.engine.connect() as connection:
-        export_request_id = connection.execute(fetch_query.execution_options(autocommit=True)).scalar()
+        trans = connection.begin()
+        export_request_id = connection.execute(fetch_query).scalar()
+        trans.commit()
         logger.info(f'fetched export email request {export_request_id}, took {elapsed(job_time)} seconds')
     return export_request_id
 
