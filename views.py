@@ -86,7 +86,7 @@ def init_export_works():
         ).first()
 
         if not export:
-            if export_format != 'csv-group-bys':
+            if export_format != 'group-bys-csv':
                 try:
                     test_query_response = requests.get(query_url)
 
@@ -112,7 +112,7 @@ def init_export_works():
         db.session.commit()
         return jsonify(export.to_dict())
     else:
-        abort_json(422, 'supported formats are: "csv" or "csv-group-bys" or "wos-plaintext"')
+        abort_json(422, 'supported formats are: "csv" or "group-bys-csv" or "wos-plaintext"')
 
 
 @app.route('/export/<export_id>', methods=["GET"])
@@ -195,6 +195,6 @@ def base_endpoint():
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8000))
+    port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True, threaded=True)
 
