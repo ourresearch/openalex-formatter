@@ -1,5 +1,6 @@
 import csv
 import tempfile
+from itertools import chain
 from math import ceil
 
 import requests
@@ -73,21 +74,30 @@ def row_dict(work):
         'publication_date': work.get('publication_date'),
         'relevance_score': work.get('relevance_score'),
         'primary_location_id': get_nested_value(primary_location_source, 'id'),
-        'primary_location_display_name': get_nested_value(primary_location_source, 'display_name'),
-        'primary_location_host_organization': get_nested_value(primary_location_source, 'host_organization_name'),
+        'primary_location_display_name': get_nested_value(
+            primary_location_source, 'display_name'),
+        'primary_location_host_organization': get_nested_value(
+            primary_location_source, 'host_organization_name'),
         'primary_location_issns': get_nested_issns(work),
-        'primary_location_issn_l': get_nested_value(primary_location_source, 'issn_l'),
-        'primary_location_type': get_nested_value(primary_location_source, 'type'),
-        'primary_location_landing_page_url': get_nested_value(primary_location, 'landing_page_url'),
-        'primary_location_pdf_url': get_nested_value(primary_location, 'pdf_url'),
+        'primary_location_issn_l': get_nested_value(primary_location_source,
+                                                    'issn_l'),
+        'primary_location_type': get_nested_value(primary_location_source,
+                                                  'type'),
+        'primary_location_landing_page_url': get_nested_value(primary_location,
+                                                              'landing_page_url'),
+        'primary_location_pdf_url': get_nested_value(primary_location,
+                                                     'pdf_url'),
         'primary_location_is_oa': get_nested_value(primary_location, 'is_oa'),
-        'primary_location_version': get_nested_value(primary_location, 'version'),
-        'primary_location_license': get_nested_value(primary_location, 'license'),
+        'primary_location_version': get_nested_value(primary_location,
+                                                     'version'),
+        'primary_location_license': get_nested_value(primary_location,
+                                                     'license'),
         'author_ids': authors_pipe_string(work, 'id'),
         'author_names': authors_pipe_string(work, 'display_name'),
         'author_orcids': authors_pipe_string(work, 'orcid'),
         'author_institution_ids': institutions_pipe_string(work, 'id'),
-        'author_institution_names': institutions_pipe_string(work, 'display_name'),
+        'author_institution_names': institutions_pipe_string(work,
+                                                             'display_name'),
         'is_oa': (work.get('open_access') or {}).get('is_oa'),
         'oa_status': (work.get('open_access') or {}).get('oa_status'),
         'oa_url': (work.get('open_access') or {}).get('oa_url'),
@@ -107,7 +117,8 @@ def row_dict(work):
         'biblio_last_page': (work.get('biblio') or {}).get('last_page'),
         'referenced_works': '|'.join(work.get('referenced_works') or []),
         'related_works': '|'.join(work.get('related_works') or []),
-        'concept_ids': '|'.join([(c.get('id') or '') for c in (work.get('concepts') or [])]),
+        'concept_ids': '|'.join(
+            [(c.get('id') or '') for c in (work.get('concepts') or [])]),
     }
 
 
@@ -119,10 +130,8 @@ def authors_pipe_string(work, field_name):
 
 
 def institutions_pipe_string(work, field_name):
-    return '|'.join([
-        ((a.get('institutions') or [{}])[0].get(field_name) or '').replace('|', '')
-        for a in (work.get('authorships') or [])
-    ])
+    flattened_institutions = list(chain.from_iterable([author.get('institutions', []) for author in (work.get('authorships') or [])]))
+    return '|'.join([inst.get(field_name, '').replace('|', '') for inst in flattened_institutions])
 
 
 def export_csv(export):
@@ -151,3 +160,9 @@ def export_csv(export):
             page += 1
 
     return csv_filename
+
+
+if __name__ == '__main__':
+    r = requests.get('https://api.openalex.org/W3108665729')
+    j = r.json()
+    print(row_dict(j))
