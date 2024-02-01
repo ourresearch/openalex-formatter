@@ -215,7 +215,7 @@ def export_csv(export):
             logger.info(f'wrote page {page} of {max_page} to {csv_filename}')
             page += 1
 
-        writer.fieldnames = CSV_FIELDS + fieldnames - set(CSV_FIELDS)
+        writer.fieldnames = CSV_FIELDS + list(fieldnames - set(CSV_FIELDS))
         writer.writeheader()
         writer.writerows(rows)
 
