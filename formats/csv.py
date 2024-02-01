@@ -207,14 +207,16 @@ def export_csv(export):
             update_export_progress(export, max_page, page)
 
             for work in result['results']:
-                for fname in work.keys():
+                row = row_dict(work)
+                for fname in row:
                     fieldnames.add(fname)
-                rows.append(row_dict(work))
+                rows.append(row)
 
             logger.info(f'wrote page {page} of {max_page} to {csv_filename}')
             page += 1
 
         writer.fieldnames = list(fieldnames)
+        writer.writeheader()
         writer.writerows(rows)
 
     return csv_filename
