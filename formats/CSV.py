@@ -8,18 +8,7 @@ import requests
 
 from app import logger
 from formats.util import update_export_progress, construct_query_url
-
-FLATTENED_TRANSFORMS = [
-    # Delete fields that are previously defined (backward compatibility)
-    lambda row: row.pop('ids_mag'),
-    lambda row: row.pop('primary_location_is_oa'),
-    lambda row: row.pop('open_access_oa_status'),
-    lambda row: row.pop('open_access_oa_url'),
-    lambda row: row.pop('ids_pmid'),
-    lambda row: row.pop('ids_pmcid'),
-    lambda row: row.pop('authorships_raw_author_name'),
-    lambda row: [row.pop(k) for k in list(row.keys()) if k.startswith('abstract')]
-]
+import pandas as pd
 
 CSV_FIELDS = [
     'id',
@@ -84,32 +73,25 @@ def flatten_json(json_data, prefix=''):
         new_key = prefix + '_' + key if prefix else key
         if isinstance(value, dict):
             flattened.update(flatten_json(value, new_key))
-        elif isinstance(value, list):
-            # Flatten array of objects
-            for i, obj in enumerate(value):
-                if isinstance(obj, dict):
-                    for sub_key, sub_value in obj.items():
-                        col_name = f"{new_key}_{sub_key}"
-                        if isinstance(sub_value, (list, dict)):
-                            continue
-                        val = json.dumps(sub_value) if not isinstance(sub_value, str) else sub_value
-                        flattened[col_name] = flattened.get(col_name, '') + '|' + val
-                else:
-                    flattened[new_key] = '|'.join(json.dumps(sub) if not isinstance(sub, str) else sub for sub in value)
         else:
-            val = json.dumps(value) if not isinstance(value,
-                                                          str) else value
-            flattened[new_key] = json.dumps(value) if isinstance(value, (dict, list)) else val
-    for k in flattened:
-        flattened[k] = flattened[k].lstrip('|')
+            flattened[new_key] = value
     return flattened
+
+def row_dict_2(work):
+    del work['abstract_inverted_index']
+    for field in work.keys():
+        if isinstance(work[field], list) or isinstance(work[field], dict):
+            work[field] = json.dumps(work[field])
+    df = pd.json_normalize(work)
+    return df
+
+
 
 
 def row_dict(work):
-    flattened = flatten_json(work)
     primary_location = get_nested_value(work, 'primary_location')
     primary_location_source = get_nested_value(primary_location, 'source')
-    row = {
+    return {
         'id': work.get('id'),
         'display_name': work.get('display_name'),
         'publication_date': work.get('publication_date'),
@@ -161,13 +143,6 @@ def row_dict(work):
         'concept_ids': '|'.join(
             [(c.get('id') or '') for c in (work.get('concepts') or [])]),
     }
-    for t in FLATTENED_TRANSFORMS:
-        try:
-            t(flattened)
-        except KeyError:
-            pass
-    row.update(flattened)
-    return row
 
 
 def authors_pipe_string(work, field_name):
@@ -211,3 +186,9 @@ def export_csv(export):
             page += 1
 
     return csv_filename
+
+
+if __name__ == '__main__':
+    r = requests.get('https://api.openalex.org/W3108665729')
+    j = r.json()
+    print(row_dict_2(j))
