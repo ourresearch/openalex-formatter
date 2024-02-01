@@ -207,7 +207,8 @@ def export_csv(export):
             update_export_progress(export, max_page, page)
 
             for work in result['results']:
-                fieldnames.add(work.keys())
+                for fname in work.keys():
+                    fieldnames.add(fname)
                 rows.append(row_dict(work))
 
             logger.info(f'wrote page {page} of {max_page} to {csv_filename}')
