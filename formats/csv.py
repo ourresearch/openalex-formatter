@@ -188,7 +188,7 @@ def institutions_pipe_string(work, field_name):
 def export_csv(export):
     csv_filename = tempfile.mkstemp(suffix='.csv')[1]
     with open(csv_filename, 'w') as csv_file:
-        writer = csv.DictWriter(csv_file)
+        writer = csv.DictWriter(csv_file, fieldnames=[])
 
         page = 1
         cursor = '*'
