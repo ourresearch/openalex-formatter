@@ -195,6 +195,9 @@ def export_csv(export):
         per_page = 200
         max_page = 500
 
+        fieldnames = set()
+        rows = []
+
         while page <= max_page and cursor is not None:
             query_url = construct_query_url(cursor, export, per_page)
             result = requests.get(query_url).json()
@@ -204,13 +207,13 @@ def export_csv(export):
             update_export_progress(export, max_page, page)
 
             for work in result['results']:
-                row = row_dict(work)
-                if not writer.fieldnames:
-                    writer.fieldnames = list(row.keys())
-                    writer.writeheader()
-                writer.writerow(row_dict(work))
+                fieldnames.add(work.keys())
+                rows.append(row_dict(work))
 
             logger.info(f'wrote page {page} of {max_page} to {csv_filename}')
             page += 1
+
+        writer.fieldnames = list(fieldnames)
+        writer.writerows(rows)
 
     return csv_filename
