@@ -188,8 +188,7 @@ def institutions_pipe_string(work, field_name):
 def export_csv(export):
     csv_filename = tempfile.mkstemp(suffix='.csv')[1]
     with open(csv_filename, 'w') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=CSV_FIELDS)
-        writer.writeheader()
+        writer = csv.DictWriter(csv_file)
 
         page = 1
         cursor = '*'
@@ -205,6 +204,10 @@ def export_csv(export):
             update_export_progress(export, max_page, page)
 
             for work in result['results']:
+                row = row_dict(work)
+                if not writer.fieldnames:
+                    writer.fieldnames = list(row.keys())
+                    writer.writeheader()
                 writer.writerow(row_dict(work))
 
             logger.info(f'wrote page {page} of {max_page} to {csv_filename}')
