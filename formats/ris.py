@@ -1,6 +1,6 @@
 import tempfile
 
-from formats.util import paginate
+from formats.util import paginate, get_nested_value
 
 type_map = {
     "article": "JOUR",
@@ -24,8 +24,10 @@ type_map = {
 def build_ris_entry(work):
     ris_entry = [f"TY  - {type_map[work['type']]}",
                  f"TI  - {work['title']}",
-                 f"PY  - {work['publication_year']}",
-                 f"PB  - {work['primary_location']['source']['host_organization_name']}"]
+                 f"PY  - {work['publication_year']}"]
+
+    if get_nested_value('primary_location', 'source', 'host_organization_name'):
+        ris_entry.append(f"PB  - {work['primary_location']['source']['host_organization_name']}")
 
     if work['ids'].get('doi'):
         doi = work['ids']['doi'].split('.org/')[-1]

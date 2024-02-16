@@ -46,3 +46,10 @@ def paginate(export, fname):
         logger.info(f'wrote page {page} of {max_page} to {fname}')
         page += 1
 
+
+def get_nested_value(work, *keys):
+    for key in keys:
+        if work is None or not isinstance(work, dict):
+            return None
+        work = work.get(key)
+    return work

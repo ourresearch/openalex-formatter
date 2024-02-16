@@ -3,7 +3,7 @@ import json
 import tempfile
 from itertools import chain
 
-from formats.util import paginate
+from formats.util import paginate, get_nested_value
 
 FLATTENED_TRANSFORMS = [
     # Delete fields that are previously defined (backward compatibility)
@@ -59,14 +59,6 @@ CSV_FIELDS = [
     'related_works',
     'concept_ids',
 ]
-
-
-def get_nested_value(work, *keys):
-    for key in keys:
-        if work is None or not isinstance(work, dict):
-            return None
-        work = work.get(key)
-    return work
 
 
 def get_nested_issns(work):
