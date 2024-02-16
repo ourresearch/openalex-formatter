@@ -31,6 +31,10 @@ def build_ris_entry(work):
         ris_entry.append(
             f"PB  - {work['primary_location']['source']['host_organization_name']}")
 
+    if get_nested_value(work, 'primary_location', 'source', 'issn_l'):
+        ris_entry.append(
+            f"SN  - {work['primary_location']['source']['issn_l']}")
+
     if get_nested_value(work, 'primary_location', 'source', 'display_name'):
         ris_entry.append(
             f"T2  - {work['primary_location']['source']['display_name']}")
@@ -38,7 +42,7 @@ def build_ris_entry(work):
     if work['ids'].get('doi'):
         doi = work['ids']['doi'].split('.org/')[-1]
         ris_entry.append(f"DO  - {doi}")
-        ris_entry.append(f"DOI  - {doi}")
+        ris_entry.append(f"DOI - {doi}")
         ris_entry.append(f"DI  - {doi}")
         ris_entry.append(f"URL  - {work['ids']['doi']}")
 
@@ -59,8 +63,6 @@ def build_ris_entry(work):
     if work['keywords']:
         for kw in work['keywords']:
             ris_entry.append(f"KW  - {kw['keyword']}")
-    if work['ids'].get('issn'):
-        ris_entry.append(f"SN  - {work['ids']['issn']}")
     if work['biblio'].get('volume'):
         ris_entry.append(f"VL  - {work['biblio']['volume']}")
     if work['biblio'].get('issue'):
