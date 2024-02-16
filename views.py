@@ -112,7 +112,7 @@ def init_export_works():
         db.session.commit()
         return jsonify(export.to_dict())
     else:
-        abort_json(422, f'supported formats are: {",".join(supported_formats)}')
+        abort_json(422, f'supported formats are: {",".join(supported_formats.keys())}')
 
 
 @app.route('/export/<export_id>', methods=["GET"])
