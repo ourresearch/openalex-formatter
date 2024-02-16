@@ -130,6 +130,8 @@ def download_export(export_id):
 
     if export.format == 'csv':
         file_format = 'csv'
+    elif export.format == 'ris':
+        file_format = 'ris'
     elif export.format == 'wos-plaintext':
         file_format = 'txt'
     elif export.format == "group-bys-csv":
