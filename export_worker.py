@@ -11,6 +11,7 @@ from app import app_url
 from app import db, logger
 from formats.csv import export_csv
 from formats.group_bys import export_group_bys_csv
+from formats.ris import export_ris
 from formats.wos_plaintext import export_wos
 from models import Export
 
@@ -35,6 +36,9 @@ def worker_run():
             elif export.format == "group-bys-csv":
                 filename = export_group_bys_csv(export)
                 file_format = 'csv'
+            elif export.format == 'ris':
+                filename = export_ris(export)
+                file_format = 'ris'
             else:
                 raise ValueError(f'unknown format {export.format}')
 
