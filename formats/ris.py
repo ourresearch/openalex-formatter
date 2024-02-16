@@ -26,8 +26,14 @@ def build_ris_entry(work):
                  f"TI  - {work['title']}",
                  f"PY  - {work['publication_year']}"]
 
-    if get_nested_value('primary_location', 'source', 'host_organization_name'):
-        ris_entry.append(f"PB  - {work['primary_location']['source']['host_organization_name']}")
+    if get_nested_value(work, 'primary_location', 'source',
+                        'host_organization_name'):
+        ris_entry.append(
+            f"PB  - {work['primary_location']['source']['host_organization_name']}")
+
+    if get_nested_value(work, 'primary_location', 'source', 'display_name'):
+        ris_entry.append(
+            f"T2  - {work['primary_location']['source']['display_name']}")
 
     if work['ids'].get('doi'):
         doi = work['ids']['doi'].split('.org/')[-1]
