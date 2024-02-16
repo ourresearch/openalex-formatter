@@ -1,7 +1,10 @@
 import datetime
+from math import ceil
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
-from app import db
+import requests
+
+from app import db, logger
 
 
 def update_export_progress(export, max_page, page):
@@ -21,3 +24,25 @@ def construct_query_url(cursor, export, per_page):
     )
     query_url = urlunparse(parsed_query_url)
     return query_url
+
+
+def paginate(export, fname):
+    page = 1
+    cursor = '*'
+    per_page = 200
+    max_page = 500
+
+    s = requests.session()
+
+    while page <= max_page and cursor is not None:
+        query_url = construct_query_url(cursor, export, per_page)
+        response = s.get(query_url).json()
+        max_page = min(ceil(response['meta']['count'] / per_page), max_page)
+        cursor = response['meta']['next_cursor']
+
+        yield response['results']
+
+        update_export_progress(export, max_page, page)
+        logger.info(f'wrote page {page} of {max_page} to {fname}')
+        page += 1
+

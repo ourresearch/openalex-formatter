@@ -2,12 +2,8 @@ import csv
 import json
 import tempfile
 from itertools import chain
-from math import ceil
 
-import requests
-
-from app import logger
-from formats.util import update_export_progress, construct_query_url
+from formats.util import paginate
 
 FLATTENED_TRANSFORMS = [
     # Delete fields that are previously defined (backward compatibility)
@@ -190,30 +186,15 @@ def export_csv(export):
     with open(csv_filename, 'w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=[])
 
-        page = 1
-        cursor = '*'
-        per_page = 200
-        max_page = 500
-
         fieldnames = set()
         rows = []
 
-        while page <= max_page and cursor is not None:
-            query_url = construct_query_url(cursor, export, per_page)
-            result = requests.get(query_url).json()
-            max_page = min(ceil(result['meta']['count'] / per_page), max_page)
-            cursor = result['meta']['next_cursor']
-
-            update_export_progress(export, max_page, page)
-
-            for work in result['results']:
+        for page in paginate(export, csv_filename):
+            for work in page:
                 row = row_dict(work)
                 for fname in row:
                     fieldnames.add(fname)
                 rows.append(row)
-
-            logger.info(f'wrote page {page} of {max_page} to {csv_filename}')
-            page += 1
 
         writer.fieldnames = CSV_FIELDS + list(fieldnames - set(CSV_FIELDS))
         writer.writeheader()
