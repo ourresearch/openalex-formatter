@@ -9,7 +9,7 @@ import requests
 from flask import abort, jsonify, make_response, redirect, request
 import sentry_sdk
 
-from app import app
+from app import app, supported_formats
 from app import db
 from bibtex import dump_bibtex
 from models import Export, ExportEmail
@@ -59,7 +59,7 @@ def init_export_works():
 
     if not export_format:
         abort_json(400, '"format" argument is required')
-    if export_format == 'csv' or export_format == 'wos-plaintext' or export_format == 'group-bys-csv':
+    if export_format in supported_formats:
         query_url = 'https://api.openalex.org/works'
         query_args = {}
 
@@ -112,7 +112,7 @@ def init_export_works():
         db.session.commit()
         return jsonify(export.to_dict())
     else:
-        abort_json(422, 'supported formats are: "csv" or "group-bys-csv" or "wos-plaintext"')
+        abort_json(422, f'supported formats are: {",".join(supported_formats)}')
 
 
 @app.route('/export/<export_id>', methods=["GET"])
