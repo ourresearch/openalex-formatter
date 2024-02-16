@@ -1,5 +1,7 @@
 import tempfile
 
+from formats.util import paginate
+
 type_map = {
     "article": "JOUR",
     "book-chapter": "CHAP",
@@ -65,10 +67,11 @@ def build_ris_entry(work):
     return "\n".join(ris_entry)
 
 
-def export_ris(works):
+def export_ris(export):
     fname = tempfile.mkstemp(suffix='.ris')[1]
     with open(fname, 'w') as f:
-        for work in works:
-            ris_entry = build_ris_entry(work)
-            f.write(ris_entry)
+        for page in paginate(export, fname):
+            for work in page:
+                ris_entry = build_ris_entry(work)
+                f.write(ris_entry)
     return fname
