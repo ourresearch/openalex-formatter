@@ -6,7 +6,7 @@ import boto3
 import sentry_sdk
 from sqlalchemy import text
 
-from app import app
+from app import app, supported_formats
 from app import app_url
 from app import db, logger
 from formats.csv import export_csv
@@ -29,19 +29,16 @@ def worker_run():
 
             if export.format == 'csv':
                 filename = export_csv(export)
-                file_format = 'csv'
             elif export.format == 'wos-plaintext':
                 filename = export_wos(export)
-                file_format = 'txt'
             elif export.format == "group-bys-csv":
                 filename = export_group_bys_csv(export)
-                file_format = 'csv'
             elif export.format == 'ris':
                 filename = export_ris(export)
-                file_format = 'ris'
             else:
                 raise ValueError(f'unknown format {export.format}')
 
+            file_format = supported_formats[export.format]
             s3_client = boto3.client('s3')
             s3_client.upload_file(filename, 'openalex-query-exports', f'{export_id}.{file_format}')
             s3_object_name = f's3://openalex-query-exports/{export_id}.{file_format}'

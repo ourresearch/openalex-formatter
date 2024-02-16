@@ -128,16 +128,10 @@ def download_export(export_id):
     if not (export := Export.query.get(export_id)):
         abort_json(404, f'Export {export_id} does not exist.')
 
-    if export.format == 'csv':
-        file_format = 'csv'
-    elif export.format == 'ris':
-        file_format = 'ris'
-    elif export.format == 'wos-plaintext':
-        file_format = 'txt'
-    elif export.format == "group-bys-csv":
-        file_format = 'csv'
-    else:
+    if export.format not in supported_formats:
         abort_json(422, f'Export {export_id} is not a supported format.')
+
+    file_format = supported_formats[export.format]
 
     if not export.status == 'finished':
         abort_json(422, f'Export {export_id} is not finished.')

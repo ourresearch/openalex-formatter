@@ -16,7 +16,10 @@ logging.basicConfig(
 
 logger = logging.getLogger("openalex-formatter")
 
-supported_formats = {'csv', 'wos-plaintext', 'group-bys-csv', 'ris'}
+supported_formats = {'csv': 'csv',
+                     'wos-plaintext': 'txt',
+                     'group-bys-csv': 'csv',
+                     'ris': 'ris'}
 
 libraries_to_mum = [
     'psycopg2',
