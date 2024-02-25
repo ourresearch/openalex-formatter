@@ -63,8 +63,7 @@ def parse_bool(s):
         raise ValueError("Invalid boolean value: {}".format(s))
 
 
-def unravel_index(index):
-    inverted_index = eval(index)
+def unravel_index(inverted_index):
     unraveled = {}
     for key, values in inverted_index.items():
         for value in values:
