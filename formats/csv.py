@@ -4,7 +4,8 @@ import tempfile
 from io import StringIO
 from itertools import chain
 
-from formats.util import paginate, get_nested_value, get_first_page
+from formats.util import paginate, get_nested_value, get_first_page, \
+    unravel_index
 
 CSV_CONTENT_TYPE = 'text/csv'
 
@@ -158,6 +159,7 @@ def row_dict(work):
         'concept_ids': '|'.join(
             [(c.get('id') or '') for c in (work.get('concepts') or [])]),
     }
+    row['abstract'] = unravel_index(work['abstract_inverted_index']) if row['is_oa'] and work.get('abstract_inverted_index') else None
     for t in FLATTENED_TRANSFORMS:
         try:
             t(flattened)

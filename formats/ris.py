@@ -1,7 +1,8 @@
 import tempfile
 from io import StringIO
 
-from formats.util import paginate, get_nested_value, get_first_page
+from formats.util import paginate, get_nested_value, get_first_page, \
+    unravel_index
 
 RIS_CONTENT_TYPE = 'text/x-ris'
 
@@ -74,6 +75,9 @@ def build_ris_entry(work):
         ris_entry.append(f"SP  - {work['biblio']['first_page']}")
     if work['biblio'].get('last_page'):
         ris_entry.append(f"EP  - {work['biblio']['last_page']}")
+
+    if work.get('abstract_inverted_index') and (work.get('open_access') or {}).get('is_oa'):
+        ris_entry.append(f"AB - {unravel_index(work['abstract_inverted_index'])}")
 
     ris_entry.append('ER -\n')
 
