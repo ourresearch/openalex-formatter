@@ -12,10 +12,12 @@ import sentry_sdk
 from app import app, supported_formats
 from app import db
 from bibtex import dump_bibtex
+from formats.util import parse_bool
 from models import Export, ExportEmail
+from formats.csv import instant_export as csv_instant_export
+from formats.ris import instant_export as ris_instant_export
 
-
-sentry_sdk.init(dsn=os.environ.get('SENTRY_DSN'),)
+sentry_sdk.init(dsn=os.environ.get('SENTRY_DSN'), )
 
 
 def abort_json(status_code, msg):
@@ -34,9 +36,12 @@ def abort_json(status_code, msg):
 def after_request(response):
     # support CORS
     response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS, PUT, DELETE, PATCH"
-    response.headers["Access-Control-Allow-Headers"] = "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control"
-    response.headers["Access-Control-Expose-Headers"] = "Authorization, Cache-Control"
+    response.headers[
+        "Access-Control-Allow-Methods"] = "POST, GET, OPTIONS, PUT, DELETE, PATCH"
+    response.headers[
+        "Access-Control-Allow-Headers"] = "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control"
+    response.headers[
+        "Access-Control-Expose-Headers"] = "Authorization, Cache-Control"
     response.headers["Access-Control-Allow-Credentials"] = "true"
 
     # make not cacheable because the GETs change after parameter change posts!
@@ -44,6 +49,22 @@ def after_request(response):
     response.cache_control.no_cache = True
 
     return response
+
+
+def instant_export_response(export):
+    if export.format == "csv":
+        file_str = csv_instant_export(export)
+        content_type = 'text/csv'
+    elif export.format == "ris":
+        file_str = ris_instant_export(export)
+        content_type = 'text/x-ris'
+    else:
+        raise Exception('Invalid export format: {}'.format(export.format))
+    output = make_response(file_str)
+    output.headers[
+        "Content-Disposition"] = f"attachment; filename={export.id}.{export.format}"
+    output.headers["Content-type"] = content_type
+    return output
 
 
 @app.route('/works', strict_slashes=False, methods=["GET"])
@@ -55,7 +76,8 @@ def init_export_works():
     if email:
         email = email.strip()
         if not re.match(r'^.+@.+\..+$', email):
-            abort_json(400, f"email argument {email} doesn't look like an email address")
+            abort_json(400,
+                       f"email argument {email} doesn't look like an email address")
 
     if not export_format:
         abort_json(400, '"format" argument is required')
@@ -75,6 +97,8 @@ def init_export_works():
         if query_group_bys_fields := request.args.get('group-bys'):
             query_args['group_bys'] = query_group_bys_fields
 
+        is_async = parse_bool(request.args.get('async', 'false'))
+
         if query_args:
             query_string = urlencode(query_args)
             query_url = f'{query_url}?{query_string}'
@@ -82,7 +106,9 @@ def init_export_works():
         export = Export.query.filter(
             Export.format == export_format,
             Export.query_url == query_url,
-            Export.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(minutes=15)
+            Export.is_async == is_async,
+            Export.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(
+                minutes=15)
         ).first()
 
         if not export:
@@ -91,7 +117,8 @@ def init_export_works():
                     test_query_response = requests.get(query_url)
 
                     if not test_query_response.status_code == 200:
-                        return make_response(test_query_response.content, test_query_response.status_code)
+                        return make_response(test_query_response.content,
+                                             test_query_response.status_code)
 
                     if not (response_json := test_query_response.json()):
                         raise requests.exceptions.RequestException
@@ -100,19 +127,26 @@ def init_export_works():
                         raise requests.exceptions.RequestException
 
                 except requests.exceptions.RequestException:
-                    abort_json(500, f"There was an error submitting your request to {query_url}.")
+                    abort_json(500,
+                               f"There was an error submitting your request to {query_url}.")
 
-            export = Export(query_url=query_url, format=export_format)
+            export = Export(query_url=query_url,
+                            format=export_format,
+                            is_async=is_async)
             db.session.merge(export)
 
         if email:
-            export_email = ExportEmail(export_id=export.id, requester_email=email)
+            export_email = ExportEmail(export_id=export.id,
+                                       requester_email=email)
             db.session.merge(export_email)
 
         db.session.commit()
+        if not is_async and export_format != 'group-bys-csv':
+            return instant_export_response(export)
         return jsonify(export.to_dict())
     else:
-        abort_json(422, f'supported formats are: {",".join(supported_formats.keys())}')
+        abort_json(422,
+                   f'supported formats are: {",".join(supported_formats.keys())}')
 
 
 @app.route('/export/<export_id>', methods=["GET"])
@@ -156,7 +190,8 @@ def download_export(export_id):
     return redirect(presigned_url, 302)
 
 
-@app.route('/works/<work_id>.<export_format>', strict_slashes=False, methods=["GET"])
+@app.route('/works/<work_id>.<export_format>', strict_slashes=False,
+           methods=["GET"])
 def format_single_work(work_id, export_format):
     export_format = export_format and export_format.strip().lower()
 
@@ -170,12 +205,14 @@ def format_single_work(work_id, export_format):
             query_response = requests.get(query_url)
 
             if not query_response.status_code == 200:
-                return make_response(query_response.content, query_response.status_code)
+                return make_response(query_response.content,
+                                     query_response.status_code)
 
             if not (response_json := query_response.json()):
                 raise requests.exceptions.RequestException
         except requests.exceptions.RequestException:
-            abort_json(500, f"There was an error submitting your request to {query_url}.")
+            abort_json(500,
+                       f"There was an error submitting your request to {query_url}.")
 
         response = make_response(dump_bibtex(response_json))
         response.headers['Content-Type'] = 'application/x-bibtex; charset=utf-8'
@@ -195,4 +232,3 @@ def base_endpoint():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
     app.run(host='0.0.0.0', port=port, debug=True, threaded=True)
-

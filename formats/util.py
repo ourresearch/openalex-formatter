@@ -26,11 +26,10 @@ def construct_query_url(cursor, export, per_page):
     return query_url
 
 
-def paginate(export, fname):
+def paginate(export, fname, max_page=250):
     page = 1
     cursor = '*'
     per_page = 200
-    max_page = 500
 
     s = requests.session()
 
@@ -53,3 +52,32 @@ def get_nested_value(work, *keys):
             return None
         work = work.get(key)
     return work
+
+
+def parse_bool(s):
+    if s.lower() in ["true", "yes", "t", "on", "1"]:
+        return True
+    elif s.lower() in ["false", "no", "f", "off", "0"]:
+        return False
+    else:
+        raise ValueError("Invalid boolean value: {}".format(s))
+
+
+def unravel_index(index):
+    inverted_index = eval(index)
+    unraveled = {}
+    for key, values in inverted_index.items():
+        for value in values:
+            unraveled[value] = key
+
+    sorted_unraveled = dict(sorted(unraveled.items()))
+    result = " ".join(sorted_unraveled.values()).replace("\n", "")
+    return result
+
+
+def get_first_page(export):
+    params = {
+        'page': '1',
+        'per-page': '200'
+    }
+    return requests.get(export.query_url, params=params).json()

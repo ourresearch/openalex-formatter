@@ -1,6 +1,9 @@
 import tempfile
+from io import StringIO
 
-from formats.util import paginate, get_nested_value
+from formats.util import paginate, get_nested_value, get_first_page
+
+RIS_CONTENT_TYPE = 'text/x-ris'
 
 type_map = {
     "article": "JOUR",
@@ -85,3 +88,12 @@ def export_ris(export):
                 ris_entry = build_ris_entry(work)
                 f.write(ris_entry)
     return fname
+
+
+def instant_export(export):
+    first_page = get_first_page(export)
+    buffer = StringIO()
+    for work in first_page['results']:
+        ris_entry = build_ris_entry(work)
+        buffer.write(ris_entry)
+    return buffer.getvalue()

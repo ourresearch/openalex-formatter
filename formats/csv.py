@@ -1,9 +1,12 @@
 import csv
 import json
 import tempfile
+from io import StringIO
 from itertools import chain
 
-from formats.util import paginate, get_nested_value
+from formats.util import paginate, get_nested_value, get_first_page
+
+CSV_CONTENT_TYPE = 'text/csv'
 
 FLATTENED_TRANSFORMS = [
     # Delete fields that are previously defined (backward compatibility)
@@ -14,7 +17,8 @@ FLATTENED_TRANSFORMS = [
     lambda row: row.pop('ids_pmid'),
     lambda row: row.pop('ids_pmcid'),
     lambda row: row.pop('authorships_raw_author_name'),
-    lambda row: [row.pop(k) for k in list(row.keys()) if k.startswith('abstract')]
+    lambda row: [row.pop(k) for k in list(row.keys()) if
+                 k.startswith('abstract')]
 ]
 
 CSV_FIELDS = [
@@ -80,14 +84,19 @@ def flatten_json(json_data, prefix=''):
                         col_name = f"{new_key}_{sub_key}"
                         if isinstance(sub_value, (list, dict)):
                             continue
-                        val = json.dumps(sub_value) if not isinstance(sub_value, str) else sub_value
-                        flattened[col_name] = flattened.get(col_name, '') + '|' + val
+                        val = json.dumps(sub_value) if not isinstance(sub_value,
+                                                                      str) else sub_value
+                        flattened[col_name] = flattened.get(col_name,
+                                                            '') + '|' + val
                 else:
-                    flattened[new_key] = '|'.join(json.dumps(sub) if not isinstance(sub, str) else sub for sub in value)
+                    flattened[new_key] = '|'.join(
+                        json.dumps(sub) if not isinstance(sub, str) else sub for
+                        sub in value)
         else:
             val = json.dumps(value) if not isinstance(value,
-                                                          str) else value
-            flattened[new_key] = json.dumps(value) if isinstance(value, (dict, list)) else val
+                                                      str) else value
+            flattened[new_key] = json.dumps(value) if isinstance(value, (
+            dict, list)) else val
     for k in flattened:
         flattened[k] = flattened[k].lstrip('|')
     return flattened
@@ -193,3 +202,22 @@ def export_csv(export):
         writer.writerows(rows)
 
     return csv_filename
+
+
+def instant_export(export):
+    buffer = StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=[])
+    fieldnames = set()
+    rows = []
+
+    first_page = get_first_page(export)
+    for work in first_page['results']:
+        row = row_dict(work)
+        for fname in row:
+            fieldnames.add(fname)
+        rows.append(row)
+
+    writer.fieldnames = CSV_FIELDS + list(fieldnames - set(CSV_FIELDS))
+    writer.writeheader()
+    writer.writerows(rows)
+    return buffer.getvalue()
