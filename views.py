@@ -97,7 +97,7 @@ def init_export_works():
         if query_group_bys_fields := request.args.get('group-bys'):
             query_args['group_bys'] = query_group_bys_fields
 
-        is_async = parse_bool(request.args.get('async', 'false'))
+        is_async = parse_bool(request.args.get('async', 'true'))
 
         if query_args:
             query_string = urlencode(query_args)
