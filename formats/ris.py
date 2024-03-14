@@ -79,7 +79,7 @@ def build_ris_entry(work):
     if work.get('abstract_inverted_index') and (work.get('open_access') or {}).get('is_oa'):
         ris_entry.append(f"AB - {unravel_index(work['abstract_inverted_index'])}")
 
-    ris_entry.append('ER -\n')
+    ris_entry.append('ER  -\n')
 
     return "\n".join(ris_entry)
 
