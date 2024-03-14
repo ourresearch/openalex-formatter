@@ -45,9 +45,7 @@ def build_ris_entry(work):
 
     if work['ids'].get('doi'):
         doi = work['ids']['doi'].split('.org/')[-1]
-        ris_entry.append(f"DO  - {doi}")
-        ris_entry.append(f"DOI - {doi}")
-        ris_entry.append(f"DI  - {doi}")
+        ris_entry.append(f"DOI  - {doi}")
         ris_entry.append(f"URL  - {work['ids']['doi']}")
 
     if work['publication_date']:
