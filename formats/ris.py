@@ -1,5 +1,6 @@
 import tempfile
 from io import StringIO
+from nameparser import HumanName
 
 from formats.util import paginate, get_nested_value, get_first_page, \
     unravel_index
@@ -45,8 +46,8 @@ def build_ris_entry(work):
 
     if work['ids'].get('doi'):
         doi = work['ids']['doi'].split('.org/')[-1]
-        ris_entry.append(f"DOI  - {doi}")
-        ris_entry.append(f"URL  - {work['ids']['doi']}")
+        ris_entry.append(f"DOI - {doi}")
+        ris_entry.append(f"URL - {work['ids']['doi']}")
 
     if work['publication_date']:
         ris_entry.append(f"DA  - {work['publication_date']}")
@@ -54,7 +55,8 @@ def build_ris_entry(work):
     # Authors
     for authorship in work['authorships']:
         author_name = authorship['author']['display_name']
-        ris_entry.append(f"AU  - {author_name}")
+        parsed_name = HumanName(author_name)
+        ris_entry.append(f"AU  - {parsed_name.last}, {parsed_name.first}")
         if authorship['raw_affiliation_strings']:
             for affiliation in authorship['raw_affiliation_strings']:
                 ris_entry.append(f"C1  - {affiliation}")
