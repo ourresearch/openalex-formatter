@@ -6,6 +6,8 @@ import requests
 
 from app import db, logger
 
+EXCEL_CELL_MAX_CHAR = 32_767
+
 
 def update_export_progress(export, max_page, page):
     export.progress = page / max_page
@@ -80,3 +82,16 @@ def get_first_page(export):
         'per-page': '200'
     }
     return requests.get(export.query_url, params=params).json()
+
+
+def truncate_format_str(cell_str):
+    cell_str = cell_str[: EXCEL_CELL_MAX_CHAR - 3]
+    if len(cell_str) >= EXCEL_CELL_MAX_CHAR - 3:
+        cell_str += '...'
+    return cell_str
+
+
+def truncate_format_row(row):
+    for k in row.keys():
+        row[k] = truncate_format_str(row[k])
+    return row

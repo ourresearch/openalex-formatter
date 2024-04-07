@@ -98,6 +98,7 @@ def init_export_works():
             query_args['group_bys'] = query_group_bys_fields
 
         is_async = parse_bool(request.args.get('async', 'true'))
+        csv_truncate = parse_bool(request.args.get('truncate', 'false'))
 
         if query_args:
             query_string = urlencode(query_args)
@@ -107,6 +108,7 @@ def init_export_works():
             Export.format == export_format,
             Export.query_url == query_url,
             Export.is_async == is_async,
+            Export.truncate == csv_truncate,
             Export.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(
                 minutes=15)
         ).first()
@@ -132,7 +134,8 @@ def init_export_works():
 
             export = Export(query_url=query_url,
                             format=export_format,
-                            is_async=is_async)
+                            is_async=is_async,
+                            truncate=csv_truncate)
             db.session.merge(export)
 
         if email:

@@ -5,7 +5,7 @@ from io import StringIO
 from itertools import chain
 
 from formats.util import paginate, get_nested_value, get_first_page, \
-    unravel_index
+    unravel_index, truncate_format_row
 
 CSV_CONTENT_TYPE = 'text/csv'
 
@@ -97,13 +97,13 @@ def flatten_json(json_data, prefix=''):
             val = json.dumps(value) if not isinstance(value,
                                                       str) else value
             flattened[new_key] = json.dumps(value) if isinstance(value, (
-            dict, list)) else val
+                dict, list)) else val
     for k in flattened:
         flattened[k] = flattened[k].lstrip('|')
     return flattened
 
 
-def row_dict(work):
+def row_dict(work, truncate=False):
     flattened = flatten_json(work)
     primary_location = get_nested_value(work, 'primary_location')
     primary_location_source = get_nested_value(primary_location, 'source')
@@ -159,13 +159,17 @@ def row_dict(work):
         'concept_ids': '|'.join(
             [(c.get('id') or '') for c in (work.get('concepts') or [])]),
     }
-    row['abstract'] = unravel_index(work['abstract_inverted_index']) if row['is_oa'] and work.get('abstract_inverted_index') else None
+    row['abstract'] = unravel_index(work['abstract_inverted_index']) if row[
+                                                                            'is_oa'] and work.get(
+        'abstract_inverted_index') else None
     for t in FLATTENED_TRANSFORMS:
         try:
             t(flattened)
         except KeyError:
             pass
     row.update(flattened)
+    if truncate:
+        row = truncate_format_row(row)
     return row
 
 
@@ -194,7 +198,7 @@ def export_csv(export):
 
         for page in paginate(export, csv_filename):
             for work in page:
-                row = row_dict(work)
+                row = row_dict(work, export.truncate)
                 for fname in row:
                     fieldnames.add(fname)
                 rows.append(row)
