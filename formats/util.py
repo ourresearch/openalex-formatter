@@ -93,5 +93,5 @@ def truncate_format_str(cell_str):
 
 def truncate_format_row(row):
     for k in row.keys():
-        row[k] = truncate_format_str(row[k])
+        row[k] = truncate_format_str(row[k]) if isinstance(row[k], str) else row[k]
     return row
