@@ -6,7 +6,7 @@ import requests
 
 from app import db, logger
 
-EXCEL_CELL_MAX_CHAR = 32_767
+EXCEL_CELL_MAX_CHAR = 32_759
 
 
 def update_export_progress(export, max_page, page):
