@@ -159,7 +159,7 @@ def process_funding_orgs(work):
 
 def process_cited_by_count(work):
     cited_by_count = work.get('cited_by_count')
-    return [f'NR {cited_by_count}']
+    return [f'CT {cited_by_count}']
 
 
 def process_publisher(work):
@@ -238,7 +238,7 @@ WOS_PROCESSORS = {
     'RI': process_author_ids,
     'OI': process_orcid_ids,
     'FU': process_funding_orgs,
-    'NR': process_cited_by_count,
+    'CT': process_cited_by_count,
     'PU': process_publisher,
     'SN': process_issn,
     'EI': process_e_issn,
