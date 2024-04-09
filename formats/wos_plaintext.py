@@ -8,7 +8,6 @@ import requests
 from app import logger
 from formats.util import update_export_progress, construct_query_url
 
-
 HEADER = [
     'FN OpenAlex',
     'VR 1.0'
@@ -59,24 +58,30 @@ def process_pub_type(work):
 
 
 def process_authors_au(work):
-    author_names = [authorship.get('author').get('display_name') for authorship in work.get('authorships')]
+    author_names = [authorship.get('author').get('display_name') for authorship
+                    in work.get('authorships')]
     if author_names:
-        return [f'AU {author_names[0]}'] + [f'   {name}' for name in author_names[1:]]
+        return [f'AU {author_names[0]}'] + [f'   {name}' for name in
+                                            author_names[1:]]
     else:
         return [f'AU ']
 
 
 def process_authors_af(work):
-    author_names = [authorship.get('author').get('display_name') for authorship in work.get('authorships')]
+    author_names = [authorship.get('author').get('display_name') for authorship
+                    in work.get('authorships')]
     if author_names:
-        return [f'AF {author_names[0]}'] + [f'   {name}' for name in author_names[1:]]
+        return [f'AF {author_names[0]}'] + [f'   {name}' for name in
+                                            author_names[1:]]
     else:
         return [f'AF ']
 
 
 def process_source_name(work):
-    if work.get('primary_location') and work.get('primary_location').get('source'):
-        source_name = work.get("primary_location", {}).get("source", {}).get("display_name")
+    if work.get('primary_location') and work.get('primary_location').get(
+            'source'):
+        source_name = work.get("primary_location", {}).get("source", {}).get(
+            "display_name")
     else:
         source_name = None
     return [f'SO {source_name}']
@@ -101,7 +106,8 @@ def process_author_addresses(work):
         if addresses:
             prefix = f'   [{author_name}]' if first_line_set else f'C1 [{author_name}]'
             lines.append(f'{prefix} {addresses[0]}')
-            lines.extend([f'   [{author_name}] {address}' for address in addresses[1:]])
+            lines.extend(
+                [f'   [{author_name}] {address}' for address in addresses[1:]])
             first_line_set = True
         else:
             prefix = 'C1' if not first_line_set else '  '
@@ -111,7 +117,8 @@ def process_author_addresses(work):
 
 
 def process_affiliations(work):
-    affiliations = [address for author in work.get('authorships') for address in get_author_addresses(author)]
+    affiliations = [address for author in work.get('authorships') for address in
+                    get_author_addresses(author)]
     return [f'C3 {"; ".join(set(affiliations))}']
 
 
@@ -119,9 +126,12 @@ def process_corresponding_author(work):
     for author in work.get('authorships'):
         if author.get('is_corresponding'):
             author_name = author.get('author').get('display_name')
-            institution_name = author.get('institutions')[0].get('display_name') if author.get('institutions') else None
-            institution_country_code = author.get('institutions')[0].get('country_code') if author.get('institutions') else None
-            return [f'RP {author_name} (corresponding author), {institution_name}, {institution_country_code}']
+            institution_name = author.get('institutions')[0].get(
+                'display_name') if author.get('institutions') else None
+            institution_country_code = author.get('institutions')[0].get(
+                'country_code') if author.get('institutions') else None
+            return [
+                f'RP {author_name} (corresponding author), {institution_name}, {institution_country_code}']
     return []
 
 
@@ -129,8 +139,10 @@ def process_author_ids(work):
     author_id_pairs = []
     for author in work.get('authorships'):
         if author.get('author').get('id'):
-            author_id_pairs.append((author.get('author').get('display_name'), author.get('author').get('id')))
-    author_id_pairs_formatted = ', '.join([f'{name}/{author_id}' for name, author_id in author_id_pairs])
+            author_id_pairs.append((author.get('author').get('display_name'),
+                                    author.get('author').get('id')))
+    author_id_pairs_formatted = ', '.join(
+        [f'{name}/{author_id}' for name, author_id in author_id_pairs])
     return [f'RI {author_id_pairs_formatted}']
 
 
@@ -140,8 +152,10 @@ def process_orcid_ids(work):
         if author.get('author').get('orcid'):
             author_name = author.get('author').get('display_name')
             orcid = author.get('author').get('orcid')
-            name_orcid_pairs.append((author_name, orcid.replace('https://orcid.org/', '')))
-    name_orcid_pairs_formatted = ', '.join([f'{name}/{orcid}' for name, orcid in name_orcid_pairs])
+            name_orcid_pairs.append(
+                (author_name, orcid.replace('https://orcid.org/', '')))
+    name_orcid_pairs_formatted = ', '.join(
+        [f'{name}/{orcid}' for name, orcid in name_orcid_pairs])
     return [f'OI {name_orcid_pairs_formatted}']
 
 
@@ -162,16 +176,24 @@ def process_cited_by_count(work):
     return [f'CT {cited_by_count}']
 
 
+def process_num_references(work):
+    num_references = work.get('referenced_works_count')
+    return [f'NR {num_references}']
+
+
 def process_publisher(work):
-    if work.get('primary_location') and work.get('primary_location').get('source'):
-        publisher = work.get('primary_location', {}).get('source', {}).get('host_organization_name')
+    if work.get('primary_location') and work.get('primary_location').get(
+            'source'):
+        publisher = work.get('primary_location', {}).get('source', {}).get(
+            'host_organization_name')
     else:
         publisher = None
     return [f'PU {publisher}']
 
 
 def process_issn(work):
-    if work.get('primary_location') and work.get('primary_location').get('source'):
+    if work.get('primary_location') and work.get('primary_location').get(
+            'source'):
         issn = work.get('primary_location', {}).get('source', {}).get('issn_l')
     else:
         issn = None
@@ -179,7 +201,8 @@ def process_issn(work):
 
 
 def process_e_issn(work):
-    if work.get('primary_location') and work.get('primary_location').get('source'):
+    if work.get('primary_location') and work.get('primary_location').get(
+            'source'):
         issn = work.get('primary_location', {}).get('source', {}).get('issn_l')
     else:
         issn = None
@@ -189,14 +212,16 @@ def process_e_issn(work):
 def process_publication_date(work):
     publication_date = work.get('publication_date')
     publication_month_digit = publication_date[5:7]
-    publication_month = datetime.datetime.strptime(publication_month_digit, "%m").strftime("%b").upper()
+    publication_month = datetime.datetime.strptime(publication_month_digit,
+                                                   "%m").strftime("%b").upper()
     return [f'PD {publication_month}']
 
 
 def process_pmid(work):
     if work.get('ids') and work.get('ids').get('pmid'):
         pmid = work.get('ids').get('pmid')
-        pmid_formatted = pmid.replace('https://pubmed.ncbi.nlm.nih.gov/', '') if pmid else None
+        pmid_formatted = pmid.replace('https://pubmed.ncbi.nlm.nih.gov/',
+                                      '') if pmid else None
     else:
         pmid_formatted = None
     return [f'PM {pmid_formatted}']
@@ -239,19 +264,25 @@ WOS_PROCESSORS = {
     'OI': process_orcid_ids,
     'FU': process_funding_orgs,
     'CT': process_cited_by_count,
+    'NR': process_num_references,
     'PU': process_publisher,
     'SN': process_issn,
     'EI': process_e_issn,
     'PD': process_publication_date,
     'PY': lambda work: [f'PY {work.get("publication_year")}'],
-    'VL': lambda work: [f'VL {work.get("biblio").get("volume") if work.get("biblio") else None}'],
-    'IS': lambda work: [f'IS {work.get("biblio").get("issue") if work.get("biblio") else None}'],
-    'BP': lambda work: [f'BP {work.get("biblio").get("first_page") if work.get("biblio") else None}'],
-    'EP': lambda work: [f'EP {work.get("biblio").get("last_page") if work.get("biblio") else None}'],
+    'VL': lambda work: [
+        f'VL {work.get("biblio").get("volume") if work.get("biblio") else None}'],
+    'IS': lambda work: [
+        f'IS {work.get("biblio").get("issue") if work.get("biblio") else None}'],
+    'BP': lambda work: [
+        f'BP {work.get("biblio").get("first_page") if work.get("biblio") else None}'],
+    'EP': lambda work: [
+        f'EP {work.get("biblio").get("last_page") if work.get("biblio") else None}'],
     'DI': process_doi,
     'PG': process_number_of_pages,
     'PM': process_pmid,
-    'OA': lambda work: [f'OA {work.get("open_access").get("oa_status") if work.get("open_access") else None}'],
+    'OA': lambda work: [
+        f'OA {work.get("open_access").get("oa_status") if work.get("open_access") else None}'],
     'DA': lambda work: [f'DA {datetime.datetime.now().strftime("%Y-%m-%d")}'],
 }
 
@@ -293,7 +324,8 @@ def get_author_addresses(authorship):
     addresses = []
     for institution in authorship.get("institutions"):
         if institution.get("display_name") and institution.get("country_code"):
-            addresses.append(f'{institution.get("display_name")}, {institution.get("country_code")}')
+            addresses.append(
+                f'{institution.get("display_name")}, {institution.get("country_code")}')
         elif institution.get("display_name"):
             addresses.append(f'{institution.get("display_name")}')
     return addresses
