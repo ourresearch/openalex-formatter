@@ -9,6 +9,7 @@ RIS_CONTENT_TYPE = 'text/x-ris'
 
 type_map = {
     "article": "JOUR",
+    'review': 'JOUR',
     "book-chapter": "CHAP",
     "dissertation": "THES",
     "book": "BOOK",
@@ -19,10 +20,11 @@ type_map = {
     "report": "RPRT",
     "peer-review": "JOUR",
     "standard": "STAND",
+    'supplementary-materials': 'FIGURE',
     "editorial": "JOUR",
     "erratum": "ERRT",
     "grant": "GEN",
-    "letter": "LETTER"
+    "letter": "LETTER",
 }
 
 
