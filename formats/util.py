@@ -3,14 +3,15 @@ from math import ceil
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 import requests
+from requests import JSONDecodeError
 
 from app import db, logger
 
 TRUNCATE_MAX_CHARS = 32_740
 
 
-def update_export_progress(export, max_page, page):
-    export.progress = page / max_page
+def update_export_progress(export, progress):
+    export.progress = progress
     export.progress_updated = datetime.datetime.utcnow()
     db.session.merge(export)
     db.session.commit()
@@ -28,23 +29,32 @@ def construct_query_url(cursor, export, per_page):
     return query_url
 
 
-def paginate(export, fname, max_page=250):
+def paginate(export, fname, max_results=200*250):
     page = 1
     cursor = '*'
     per_page = 200
+    results_count = 0
 
     s = requests.session()
 
-    while page <= max_page and cursor is not None:
+    while results_count <= max_results and cursor is not None:
         query_url = construct_query_url(cursor, export, per_page)
-        response = s.get(query_url).json()
-        max_page = min(ceil(response['meta']['count'] / per_page), max_page)
-        cursor = response['meta']['next_cursor']
+        try:
+            r = s.get(query_url)
+            j = r.json()
+        except JSONDecodeError:
+            per_page = ceil(per_page / 2)
+            continue
+        per_page = min(200, per_page * 2)
+        total_count = j['meta']['count']
+        cursor = j['meta']['next_cursor']
+        results = j['results']
+        results_count += len(results)
 
-        yield response['results']
+        yield results
 
-        update_export_progress(export, max_page, page)
-        logger.info(f'wrote page {page} of {max_page} to {fname}')
+        update_export_progress(export, results_count/total_count)
+        logger.info(f'wrote {results_count}/{total_count} to {fname}')
         page += 1
 
 

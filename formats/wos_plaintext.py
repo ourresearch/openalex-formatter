@@ -1,12 +1,9 @@
 import datetime
 import tempfile
-from math import ceil
 
 import pycountry
-import requests
 
-from app import logger
-from formats.util import update_export_progress, construct_query_url
+from formats.util import paginate
 
 HEADER = [
     'FN OpenAlex',
@@ -17,24 +14,11 @@ HEADER = [
 def export_wos(export):
     wos_filename = tempfile.mkstemp(suffix='.txt')[1]
     with open(wos_filename, 'w') as file:
-        page = 1
-        cursor = '*'
-        per_page = 200
-        max_page = 500
-
-        while page <= max_page and cursor is not None:
-            query_url = construct_query_url(cursor, export, per_page)
-            result = requests.get(query_url).json()
-            max_page = min(ceil(result['meta']['count'] / per_page), max_page)
-            cursor = result['meta']['next_cursor']
-
-            update_export_progress(export, max_page, page)
-
-            file.write('\n'.join(HEADER))
-            file.write('\n')
-
-            for work in result['results']:
-                lines = []
+        file.write('\n'.join(HEADER))
+        file.write('\n')
+        for page in paginate(export, wos_filename):
+            lines = []
+            for work in page:
                 for key, processor in WOS_PROCESSORS.items():
                     line = processor(work)
                     # stripe None values
@@ -42,12 +26,9 @@ def export_wos(export):
                         line[0] = line[0].split(' ')[0]
                     lines.extend(line)
 
-                # write to file and add a blank line
-                file.write('\n'.join(lines))
-                file.write('\nER\n\n')
-
-            logger.info(f'wrote page {page} of {max_page} to {wos_filename}')
-            page += 1
+            # write to file and add a blank line
+            file.write('\n'.join(lines))
+            file.write('\nER\n\n')
 
     return wos_filename
 

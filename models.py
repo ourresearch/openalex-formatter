@@ -48,7 +48,9 @@ class Export(db.Model):
 
 
 class ExportEmail(db.Model):
-    id = db.Column(db.Integer, Sequence('export_email_id_seq', start=1, increment=1), primary_key=True)
+    id = db.Column(db.Integer,
+                   Sequence('export_email_id_seq', start=1, increment=1),
+                   primary_key=True)
     export_id = db.Column(db.Text, db.ForeignKey('export.id'))
     requester_email = db.Column(db.Text)
     requested_at = db.Column(db.DateTime)
