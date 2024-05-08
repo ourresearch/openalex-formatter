@@ -68,7 +68,7 @@ def build_ris_entry(work):
         ris_entry.append(f"LA  - {work['language']}")
     if work['keywords']:
         for kw in work['keywords']:
-            ris_entry.append(f"KW  - {kw['keyword']}")
+            ris_entry.append(f"KW  - {kw['display_name']}")
     if work['biblio'].get('volume'):
         ris_entry.append(f"VL  - {work['biblio']['volume']}")
     if work['biblio'].get('issue'):
