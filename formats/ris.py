@@ -10,6 +10,7 @@ RIS_CONTENT_TYPE = 'text/x-ris'
 type_map = {
     "article": "JOUR",
     'review': 'JOUR',
+    'preprint': 'JOUR',
     "book-chapter": "CHAP",
     "dissertation": "THES",
     "book": "BOOK",
