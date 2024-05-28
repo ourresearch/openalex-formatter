@@ -83,7 +83,11 @@ def flatten_json(json_data, prefix=''):
                 if isinstance(obj, dict):
                     for sub_key, sub_value in obj.items():
                         col_name = f"{new_key}_{sub_key}"
-                        if isinstance(sub_value, (list, dict)):
+                        if isinstance(sub_value, dict):
+                            continue
+                        elif isinstance(sub_value, list) and sub_value and isinstance(sub_value[0], str):
+                            col_name = f'{col_name}_{i}'
+                            flattened[col_name] = '|'.join(sub_value)
                             continue
                         val = json.dumps(sub_value) if not isinstance(sub_value,
                                                                       str) else sub_value
