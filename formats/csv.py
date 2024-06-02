@@ -172,6 +172,9 @@ def row_dict(work, truncate=False):
         except KeyError:
             pass
     row.update(flattened)
+    for k in list(row.keys()):
+        if row[k] is None or row[k] == '':
+            del row[k]
     if truncate:
         row = truncate_format_row(row)
     return row
@@ -204,10 +207,11 @@ def export_csv(export):
             for work in page:
                 row = row_dict(work, export.truncate)
                 for fname in row:
-                    fieldnames.add(fname)
+                    if row[fname] is not None and row[fname] != '':
+                        fieldnames.add(fname)
                 rows.append(row)
 
-        writer.fieldnames = CSV_FIELDS + list(fieldnames - set(CSV_FIELDS))
+        writer.fieldnames = fieldnames
         writer.writeheader()
         writer.writerows(rows)
 

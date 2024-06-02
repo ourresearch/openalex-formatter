@@ -88,6 +88,9 @@ def init_export_works():
         if query_filter := request.args.get('filter'):
             query_args['filter'] = query_filter
 
+        if select := request.args.get('select'):
+            query_args['select'] = select
+
         if query_sort := request.args.get('sort'):
             query_args['sort'] = query_sort
 
