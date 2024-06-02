@@ -89,7 +89,9 @@ def init_export_works():
             query_args['filter'] = query_filter
 
         if select := request.args.get('select'):
-            query_args['select'] = select
+            query_args['select'] = select.strip(',')
+            if 'id' not in query_args:
+                query_args['select'] = ',id'
 
         if query_sort := request.args.get('sort'):
             query_args['sort'] = query_sort
@@ -139,6 +141,7 @@ def init_export_works():
             export = Export(query_url=query_url,
                             format=export_format,
                             is_async=is_async,
+                            select=select,
                             truncate=csv_truncate)
             db.session.merge(export)
 
