@@ -111,6 +111,7 @@ def init_export_works():
             Export.format == export_format,
             Export.query_url == query_url,
             Export.is_async == is_async,
+            Export.select == select,
             Export.truncate == csv_truncate,
             Export.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(
                 minutes=15)

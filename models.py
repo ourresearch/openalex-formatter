@@ -18,6 +18,7 @@ class Export(db.Model):
     progress_url = db.Column(db.Text)
     is_async = db.Column(db.Boolean)
     truncate = db.Column(db.Boolean)
+    select = db.Column(db.Text)
 
     def __init__(self, **kwargs):
         if 'format' in kwargs:
