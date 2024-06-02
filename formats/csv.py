@@ -200,7 +200,7 @@ def export_csv(export):
     with open(csv_filename, 'w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=[])
 
-        fieldnames = set()
+        fieldnames = {'id'}
         rows = []
 
         for page in paginate(export, csv_filename):
