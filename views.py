@@ -91,7 +91,7 @@ def init_export_works():
         if select := request.args.get('select'):
             query_args['select'] = select.strip(',')
             if 'id' not in query_args:
-                query_args['select'] = ',id'
+                query_args['select'] += ',id'
 
         if query_sort := request.args.get('sort'):
             query_args['sort'] = query_sort
