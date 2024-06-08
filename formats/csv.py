@@ -221,17 +221,18 @@ def export_csv(export):
 def instant_export(export):
     buffer = StringIO()
     writer = csv.DictWriter(buffer, fieldnames=[])
-    fieldnames = set()
+    fieldnames = {'id'}
     rows = []
 
     first_page = get_first_page(export)
     for work in first_page['results']:
         row = row_dict(work)
         for fname in row:
-            fieldnames.add(fname)
+            if row[fname] is not None and row[fname] != '':
+                fieldnames.add(fname)
         rows.append(row)
 
-    writer.fieldnames = CSV_FIELDS + list(fieldnames - set(CSV_FIELDS))
+    writer.fieldnames = fieldnames
     writer.writeheader()
     writer.writerows(rows)
     return buffer.getvalue()
