@@ -16,6 +16,7 @@ from formats.util import parse_bool
 from models import Export, ExportEmail
 from formats.csv import instant_export as csv_instant_export
 from formats.ris import instant_export as ris_instant_export
+from formats.wos_plaintext import instant_export as wos_instant_export
 
 sentry_sdk.init(dsn=os.environ.get('SENTRY_DSN'), )
 
@@ -58,6 +59,9 @@ def instant_export_response(export):
     elif export.format == "ris":
         file_str = ris_instant_export(export)
         content_type = 'text/x-ris'
+    elif export.format == "wos-plaintext":
+        file_str = wos_instant_export(export)
+        content_type = 'text/x-wos'
     else:
         raise Exception('Invalid export format: {}'.format(export.format))
     output = make_response(file_str)
