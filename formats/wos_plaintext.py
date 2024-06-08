@@ -1,9 +1,10 @@
 import datetime
 import tempfile
+from io import StringIO
 
 import pycountry
 
-from formats.util import paginate
+from formats.util import paginate, get_first_page
 
 HEADER = [
     'FN OpenAlex',
@@ -31,6 +32,23 @@ def export_wos(export):
             file.write('\nER\n\n')
 
     return wos_filename
+
+
+def instant_export(export):
+    first_page = get_first_page(export)
+    buffer = StringIO()
+    buffer.write('\n'.join(HEADER))
+    buffer.write('\n')
+    lines = []
+    for work in first_page['results']:
+        for key, processor in WOS_PROCESSORS.items():
+            line = processor(work)
+            if line and line[0].split(' ')[1] == 'None':
+                line[0] = line[0].split(' ')[0]
+            lines.extend(line)
+    buffer.write('\n'.join(lines))
+    buffer.write('\nER\n\n')
+    return buffer.getvalue()
 
 
 def process_pub_type(work):
