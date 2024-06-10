@@ -19,6 +19,7 @@ class Export(db.Model):
     is_async = db.Column(db.Boolean)
     truncate = db.Column(db.Boolean)
     select = db.Column(db.Text)
+    columns = db.Column(db.Text)
 
     def __init__(self, **kwargs):
         if 'format' in kwargs:

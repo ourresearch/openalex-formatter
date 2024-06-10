@@ -113,11 +113,14 @@ def init_export_works():
             query_string = urlencode(query_args)
             query_url = f'{query_url}?{query_string}'
 
+        columns = request.args.get('columns')
+
         export = Export.query.filter(
             Export.format == export_format,
             Export.query_url == query_url,
             Export.is_async == is_async,
             Export.select == select,
+            Export.columns == columns,
             Export.truncate == csv_truncate,
             Export.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(
                 minutes=15)

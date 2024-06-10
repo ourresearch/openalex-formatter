@@ -8,7 +8,8 @@ import pandas as pd
 
 
 def join_lists(cell):
-    if isinstance(cell, list) and all(isinstance(i, (str, int, float)) for i in cell):
+    if isinstance(cell, list) and all(
+            isinstance(i, (str, int, float)) for i in cell):
         return '|'.join(cell)
     return cell
 
@@ -28,14 +29,37 @@ def create_csv_zip_buffer(fnames_df_map):
     return zip_buffer
 
 
+def object_columns_select(export_columns):
+    m = {}
+    for column in export_columns:
+        split = column.split('.', maxsplit=1)
+        if len(split) == 2:
+            m[split[0]] = split[1]
+        else:
+            m[split[0]] = ''
+    return m
+
+
+def set_work_ids(col_list, df):
+    for i, _list in enumerate(col_list):
+        for obj in _list:
+            obj['work_id'] = df['id'].iloc[i]
+
+
 def write_dataframes(export):
     dfs = dict()
     works_csv_key = 'works'
+    raw_columns = export.columns.split(',')
+    columns_map = object_columns_select(raw_columns)
     for page in paginate(export):
         df = pd.json_normalize(page)
-        df.drop(
-            columns=[col for col in df.columns if 'abstract_inverted' in col],
-            inplace=True)
+        drop_columns = [col for col in df.columns if
+                        'abstract_inverted' in col]
+        df.drop(columns=drop_columns, inplace=True)
+        if export.columns:
+            drop_columns = [col for col in df.columns if
+                            col not in list(columns_map.keys()) + raw_columns]
+        df.drop(columns=drop_columns, inplace=True)
         if works_csv_key not in dfs:
             dfs[works_csv_key] = df
         else:
@@ -47,15 +71,26 @@ def write_dataframes(export):
             non_empty_lists = filtered_series[filtered_series.map(len) > 0]
             if not non_empty_lists.empty and isinstance(
                     non_empty_lists.iloc[0][0], dict):
+                col_list_form = df[col].tolist()
+                set_work_ids(col_list_form, df)
                 sub_df = pd.json_normalize(
-                    list(itertools.chain(*df[col].tolist())))
-                sub_df.insert(0, 'work_id', df['id'])
+                    list(itertools.chain(*col_list_form)))
+                drop_columns = [column for column in sub_df.columns if
+                                column not in [columns_map[col]] + ['work_id']]
+                sub_df.drop(columns=drop_columns, inplace=True)
+                dfs[works_csv_key].drop(columns=[col], inplace=True)
                 if col in dfs:
                     dfs[col] = pd.concat([dfs[col], sub_df],
                                          axis=0).reset_index(drop=True)
                 else:
                     dfs[col] = sub_df
-        df.drop([col for col in dfs.keys() if col in df.columns], axis=1, inplace=True)
+        drop_columns = [key for key in dfs.keys() if
+                        key in dfs[works_csv_key].columns]
+        if drop_columns:
+            dfs[works_csv_key].drop(columns=drop_columns, inplace=True)
+    drop_columns = [col for col in dfs[works_csv_key].columns if
+                    col not in raw_columns]
+    dfs[works_csv_key].drop(columns=drop_columns, inplace=True)
     return create_csv_zip_buffer(dfs)
 
 
