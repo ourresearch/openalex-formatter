@@ -149,6 +149,7 @@ def init_export_works():
                             format=export_format,
                             is_async=is_async,
                             select=select,
+                            columns=columns,
                             truncate=csv_truncate)
             db.session.merge(export)
 
