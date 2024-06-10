@@ -58,7 +58,7 @@ def write_dataframes(export):
         df.drop(columns=drop_columns, inplace=True)
         if export.columns:
             drop_columns = [col for col in df.columns if
-                            col not in list(columns_map.keys()) + raw_columns]
+                            col not in list(columns_map.keys()) + raw_columns + ['id']]
         df.drop(columns=drop_columns, inplace=True)
         if works_csv_key not in dfs:
             dfs[works_csv_key] = df
