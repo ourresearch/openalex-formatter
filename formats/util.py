@@ -29,7 +29,7 @@ def construct_query_url(cursor, export, per_page):
     return query_url
 
 
-def paginate(export, fname, max_results=200*250):
+def paginate(export, fname=None, max_results=200*250):
     page = 1
     cursor = '*'
     per_page = 200
@@ -54,7 +54,8 @@ def paginate(export, fname, max_results=200*250):
         yield results
 
         update_export_progress(export, results_count/total_count)
-        logger.info(f'wrote {results_count}/{total_count} to {fname}')
+        if fname:
+            logger.info(f'wrote {results_count}/{total_count} to {fname}')
         page += 1
 
 

@@ -13,6 +13,7 @@ from formats.csv import export_csv
 from formats.group_bys import export_group_bys_csv
 from formats.ris import export_ris
 from formats.wos_plaintext import export_wos
+from formats.zip import export_zip
 from models import Export
 
 from util import elapsed
@@ -35,6 +36,8 @@ def worker_run():
                 filename = export_group_bys_csv(export)
             elif export.format == 'ris':
                 filename = export_ris(export)
+            elif export.format == "zip":
+                filename = export_zip(export)
             else:
                 raise ValueError(f'unknown format {export.format}')
 
