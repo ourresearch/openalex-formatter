@@ -46,20 +46,32 @@ def set_work_ids(col_list, df):
             obj['work_id'] = df['id'].iloc[i]
 
 
+def set_column_order(sub_df):
+    front_cols = ['work_id']
+    if 'id' in sub_df.columns:
+        front_cols.insert(0, 'id')
+    end_cols = [col for col in sub_df.columns if col not in front_cols]
+    df = sub_df[front_cols + end_cols]
+    return df
+
+
 def write_dataframes(export):
     dfs = dict()
     works_csv_key = 'works'
-    raw_columns = export.columns.split(',')
-    columns_map = object_columns_select(raw_columns)
+    raw_columns = []
+    columns_map = {}
     for page in paginate(export):
         df = pd.json_normalize(page)
         drop_columns = [col for col in df.columns if
                         'abstract_inverted' in col]
         df.drop(columns=drop_columns, inplace=True)
         if export.columns:
+            raw_columns = export.columns.split(',')
+            columns_map = object_columns_select(raw_columns)
             drop_columns = [col for col in df.columns if
-                            col not in list(columns_map.keys()) + raw_columns + ['id']]
-        df.drop(columns=drop_columns, inplace=True)
+                            col not in list(
+                                columns_map.keys()) + raw_columns + ['id']]
+            df.drop(columns=drop_columns, inplace=True)
         if works_csv_key not in dfs:
             dfs[works_csv_key] = df
         else:
@@ -75,9 +87,12 @@ def write_dataframes(export):
                 set_work_ids(col_list_form, df)
                 sub_df = pd.json_normalize(
                     list(itertools.chain(*col_list_form)))
-                drop_columns = [column for column in sub_df.columns if
-                                column not in [columns_map[col]] + ['work_id']]
-                sub_df.drop(columns=drop_columns, inplace=True)
+                sub_df = set_column_order(sub_df)
+                if raw_columns:
+                    drop_columns = [column for column in sub_df.columns if
+                                    column not in [columns_map.get(col, [])] + [
+                                        'work_id']]
+                    sub_df.drop(columns=drop_columns, inplace=True)
                 dfs[works_csv_key].drop(columns=[col], inplace=True)
                 if col in dfs:
                     dfs[col] = pd.concat([dfs[col], sub_df],
@@ -88,9 +103,10 @@ def write_dataframes(export):
                         key in dfs[works_csv_key].columns]
         if drop_columns:
             dfs[works_csv_key].drop(columns=drop_columns, inplace=True)
-    drop_columns = [col for col in dfs[works_csv_key].columns if
-                    col not in raw_columns]
-    dfs[works_csv_key].drop(columns=drop_columns, inplace=True)
+    if raw_columns:
+        drop_columns = [col for col in dfs[works_csv_key].columns if
+                        col not in raw_columns]
+        dfs[works_csv_key].drop(columns=drop_columns, inplace=True)
     return create_csv_zip_buffer(dfs)
 
 
