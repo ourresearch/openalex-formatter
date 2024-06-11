@@ -57,7 +57,7 @@ def paginate(export, fname=None, max_results=200 * 250):
 
         yield results
 
-        if export.is_async:
+        if not export.is_async:
             update_export_progress(export, 1)
             break
 
