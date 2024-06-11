@@ -5,234 +5,36 @@ from io import StringIO
 from itertools import chain
 
 from formats.util import paginate, get_nested_value, get_first_page, \
-    unravel_index, truncate_format_row
-
-CSV_CONTENT_TYPE = 'text/csv'
-
-FLATTENED_TRANSFORMS = [
-    # Delete fields that are previously defined (backward compatibility)
-    lambda row: row.pop('ids_mag'),
-    lambda row: row.pop('primary_location_is_oa'),
-    lambda row: row.pop('open_access_oa_status'),
-    lambda row: row.pop('open_access_oa_url'),
-    lambda row: row.pop('ids_pmid'),
-    lambda row: row.pop('ids_pmcid'),
-    lambda row: row.pop('authorships_raw_author_name'),
-    lambda row: [row.pop(k) for k in list(row.keys()) if
-                 k.startswith('abstract')]
-]
-
-CSV_FIELDS = [
-    'id',
-    'display_name',
-    'publication_date',
-    'relevance_score',
-    'primary_location_id',
-    'primary_location_display_name',
-    'primary_location_host_organization',
-    'primary_location_issns',
-    'primary_location_issn_l',
-    'primary_location_type',
-    'primary_location_landing_page_url',
-    'primary_location_pdf_url',
-    'primary_location_is_oa',
-    'primary_location_version',
-    'primary_location_license',
-    'author_ids',
-    'author_names',
-    'author_orcids',
-    'author_institution_ids',
-    'author_institution_names',
-    'is_oa',
-    'oa_status',
-    'oa_url',
-    'cited_by_count',
-    'doi',
-    'mag',
-    'pmid',
-    'pmcid',
-    'publication_year',
-    'cited_by_api_url',
-    'type',
-    'is_paratext',
-    'is_retracted',
-    'biblio_issue',
-    'biblio_first_page',
-    'biblio_volume',
-    'biblio_last_page',
-    'referenced_works',
-    'related_works',
-    'concept_ids',
-]
+    unravel_index, truncate_format_row, build_dataframes, WORKS_DF_KEY, \
+    join_lists
 
 
-def get_nested_issns(work):
-    issns = get_nested_value(work, 'primary_location', 'source', 'issn')
-    return '|'.join(issns) if issns else ""
-
-
-def flatten_json(json_data, prefix=''):
-    flattened = {}
-    for key, value in json_data.items():
-        new_key = prefix + '_' + key if prefix else key
-        if isinstance(value, dict):
-            flattened.update(flatten_json(value, new_key))
-        elif isinstance(value, list):
-            # Flatten array of objects
-            for i, obj in enumerate(value):
-                if isinstance(obj, dict):
-                    for sub_key, sub_value in obj.items():
-                        col_name = f"{new_key}_{sub_key}"
-                        if isinstance(sub_value, dict):
-                            continue
-                        elif isinstance(sub_value, list) and sub_value and isinstance(sub_value[0], str):
-                            col_name = f'{col_name}_{i}'
-                            flattened[col_name] = '|'.join(sub_value)
-                            continue
-                        val = json.dumps(sub_value) if not isinstance(sub_value,
-                                                                      str) else sub_value
-                        flattened[col_name] = flattened.get(col_name,
-                                                            '') + '|' + val
-                else:
-                    flattened[new_key] = '|'.join(
-                        json.dumps(sub) if not isinstance(sub, str) else sub for
-                        sub in value)
-        else:
-            val = json.dumps(value) if not isinstance(value,
-                                                      str) else value
-            flattened[new_key] = json.dumps(value) if isinstance(value, (
-                dict, list)) else val
-    for k in flattened:
-        flattened[k] = flattened[k].lstrip('|')
-    return flattened
-
-
-def row_dict(work, truncate=False):
-    flattened = flatten_json(work)
-    primary_location = get_nested_value(work, 'primary_location')
-    primary_location_source = get_nested_value(primary_location, 'source')
-    row = {
-        'id': work.get('id'),
-        'display_name': work.get('display_name'),
-        'publication_date': work.get('publication_date'),
-        'relevance_score': work.get('relevance_score'),
-        'primary_location_id': get_nested_value(primary_location_source, 'id'),
-        'primary_location_display_name': get_nested_value(
-            primary_location_source, 'display_name'),
-        'primary_location_host_organization': get_nested_value(
-            primary_location_source, 'host_organization_name'),
-        'primary_location_issns': get_nested_issns(work),
-        'primary_location_issn_l': get_nested_value(primary_location_source,
-                                                    'issn_l'),
-        'primary_location_type': get_nested_value(primary_location_source,
-                                                  'type'),
-        'primary_location_landing_page_url': get_nested_value(primary_location,
-                                                              'landing_page_url'),
-        'primary_location_pdf_url': get_nested_value(primary_location,
-                                                     'pdf_url'),
-        'primary_location_is_oa': get_nested_value(primary_location, 'is_oa'),
-        'primary_location_version': get_nested_value(primary_location,
-                                                     'version'),
-        'primary_location_license': get_nested_value(primary_location,
-                                                     'license'),
-        'author_ids': authors_pipe_string(work, 'id'),
-        'author_names': authors_pipe_string(work, 'display_name'),
-        'author_orcids': authors_pipe_string(work, 'orcid'),
-        'author_institution_ids': institutions_pipe_string(work, 'id'),
-        'author_institution_names': institutions_pipe_string(work,
-                                                             'display_name'),
-        'is_oa': (work.get('open_access') or {}).get('is_oa'),
-        'oa_status': (work.get('open_access') or {}).get('oa_status'),
-        'oa_url': (work.get('open_access') or {}).get('oa_url'),
-        'cited_by_count': work.get('cited_by_count'),
-        'doi': (work.get('ids') or {}).get('doi'),
-        'mag': (work.get('ids') or {}).get('mag'),
-        'pmid': (work.get('ids') or {}).get('pmid'),
-        'pmcid': (work.get('ids') or {}).get('pmcid'),
-        'publication_year': work.get('publication_year'),
-        'cited_by_api_url': work.get('cited_by_api_url'),
-        'type': work.get('type'),
-        'is_paratext': work.get('is_paratext'),
-        'is_retracted': work.get('is_retracted'),
-        'biblio_issue': (work.get('biblio') or {}).get('issue'),
-        'biblio_first_page': (work.get('biblio') or {}).get('first_page'),
-        'biblio_volume': (work.get('biblio') or {}).get('volume'),
-        'biblio_last_page': (work.get('biblio') or {}).get('last_page'),
-        'referenced_works': '|'.join(work.get('referenced_works') or []),
-        'related_works': '|'.join(work.get('related_works') or []),
-        'concept_ids': '|'.join(
-            [(c.get('id') or '') for c in (work.get('concepts') or [])]),
-    }
-    row['abstract'] = unravel_index(work['abstract_inverted_index']) if row[
-                                                                            'is_oa'] and work.get(
-        'abstract_inverted_index') else None
-    for t in FLATTENED_TRANSFORMS:
-        try:
-            t(flattened)
-        except KeyError:
-            pass
-    row.update(flattened)
-    for k in list(row.keys()):
-        if row[k] is None or row[k] == '':
-            del row[k]
-    if truncate:
-        row = truncate_format_row(row)
-    return row
-
-
-def authors_pipe_string(work, field_name):
-    return '|'.join([
-        ((a.get('author') or {}).get(field_name) or '').replace('|', '')
-        for a in (work.get('authorships') or [])
-    ])
-
-
-def institutions_pipe_string(work, field_name):
-    flattened_institutions = list(chain.from_iterable(
-        [author.get('institutions', []) for author in
-         (work.get('authorships') or [])]))
-    return '|'.join([inst.get(field_name, '').replace('|', '') for inst in
-                     flattened_institutions])
+def build_single_df(export):
+    dfs = build_dataframes(export)
+    for k in dfs.keys():
+        if k == WORKS_DF_KEY:
+            dfs[k] = dfs[k].applymap(join_lists)
+            continue
+        dfs[k] = dfs[k].applymap(str).groupby('work_id').agg(
+            lambda x: '|'.join(x)).rename(
+            columns=lambda x: f'{k}.{x}' if x != 'work_id' else x)
+        dfs[WORKS_DF_KEY] = dfs[WORKS_DF_KEY].merge(dfs[k],
+                                                    how='left',
+                                                    left_on='id',
+                                                    right_on='work_id')
+    return dfs[WORKS_DF_KEY]
 
 
 def export_csv(export):
     csv_filename = tempfile.mkstemp(suffix='.csv')[1]
+    df = build_single_df(export)
     with open(csv_filename, 'w') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=[])
-
-        fieldnames = {'id'}
-        rows = []
-
-        for page in paginate(export, csv_filename):
-            for work in page:
-                row = row_dict(work, export.truncate)
-                for fname in row:
-                    if row[fname] is not None and row[fname] != '':
-                        fieldnames.add(fname)
-                rows.append(row)
-
-        writer.fieldnames = fieldnames
-        writer.writeheader()
-        writer.writerows(rows)
-
+        df.to_csv(csv_file, index=False)
     return csv_filename
 
 
 def instant_export(export):
     buffer = StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=[])
-    fieldnames = {'id'}
-    rows = []
-
-    first_page = get_first_page(export)
-    for work in first_page['results']:
-        row = row_dict(work)
-        for fname in row:
-            if row[fname] is not None and row[fname] != '':
-                fieldnames.add(fname)
-        rows.append(row)
-
-    writer.fieldnames = fieldnames
-    writer.writeheader()
-    writer.writerows(rows)
+    df = build_single_df(export)
+    df.to_csv(buffer, index=False)
     return buffer.getvalue()

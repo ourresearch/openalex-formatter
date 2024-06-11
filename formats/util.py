@@ -1,13 +1,17 @@
 import datetime
+import itertools
 from math import ceil
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
+import pandas as pd
 import requests
 from requests import JSONDecodeError
 
 from app import db, logger
 
 TRUNCATE_MAX_CHARS = 32_740
+
+WORKS_DF_KEY = 'works'
 
 
 def update_export_progress(export, progress):
@@ -29,7 +33,7 @@ def construct_query_url(cursor, export, per_page):
     return query_url
 
 
-def paginate(export, fname=None, max_results=200*250):
+def paginate(export, fname=None, max_results=200 * 250):
     page = 1
     cursor = '*'
     per_page = 200
@@ -53,7 +57,11 @@ def paginate(export, fname=None, max_results=200*250):
 
         yield results
 
-        update_export_progress(export, results_count/total_count)
+        if export.is_async:
+            update_export_progress(export, 1)
+            break
+
+        update_export_progress(export, results_count / total_count)
         if fname:
             logger.info(f'wrote {results_count}/{total_count} to {fname}')
         page += 1
@@ -104,5 +112,100 @@ def truncate_format_str(cell_str):
 
 def truncate_format_row(row):
     for k in row.keys():
-        row[k] = truncate_format_str(row[k]) if isinstance(row[k], str) else row[k]
+        row[k] = truncate_format_str(row[k]) if isinstance(row[k], str) else \
+            row[k]
     return row
+
+
+def object_columns_select(export_columns):
+    m = {}
+    for column in export_columns:
+        split = column.split('.', maxsplit=1)
+        if len(split) == 2:
+            m[split[0]] = split[1]
+        else:
+            m[split[0]] = ''
+    return m
+
+
+def set_work_ids(col_list, df):
+    for i, _list in enumerate(col_list):
+        for obj in _list:
+            obj['work_id'] = df['id'].iloc[i]
+
+
+def set_column_order(sub_df):
+    front_cols = ['work_id']
+    if 'id' in sub_df.columns:
+        front_cols.insert(0, 'id')
+    end_cols = [col for col in sub_df.columns if col not in front_cols]
+    df = sub_df[front_cols + end_cols]
+    return df
+
+
+def truncate_string(x, max_len=TRUNCATE_MAX_CHARS):
+    return x[:max_len] if isinstance(x, str) else x
+
+
+def join_lists(cell):
+    if isinstance(cell, list) and all(
+            isinstance(i, (str, int, float)) for i in cell):
+        return '|'.join(cell)
+    return cell
+
+
+def build_dataframes(export):
+    dfs = dict()
+    raw_columns = ['id']
+    columns_map = {}
+    for page in paginate(export):
+        df = pd.json_normalize(page)
+        drop_columns = [col for col in df.columns if
+                        'abstract_inverted' in col]
+        df.drop(columns=drop_columns, inplace=True)
+        if export.columns:
+            raw_columns.extend(export.columns.split(','))
+            columns_map = object_columns_select(raw_columns)
+            drop_columns = [col for col in df.columns if
+                            col not in list(
+                                columns_map.keys()) + raw_columns]
+            df.drop(columns=drop_columns, inplace=True)
+        if WORKS_DF_KEY not in dfs:
+            dfs[WORKS_DF_KEY] = df
+        else:
+            dfs[WORKS_DF_KEY] = pd.concat([dfs[WORKS_DF_KEY], df],
+                                          axis=0).reset_index(drop=True)
+        for col in df.columns:
+            filtered_series = df[col].dropna().apply(
+                lambda x: x if isinstance(x, list) else [])
+            non_empty_lists = filtered_series[filtered_series.map(len) > 0]
+            if not non_empty_lists.empty and isinstance(
+                    non_empty_lists.iloc[0][0], dict):
+                col_list_form = df[col].tolist()
+                set_work_ids(col_list_form, df)
+                sub_df = pd.json_normalize(
+                    list(itertools.chain(*col_list_form)))
+                sub_df = set_column_order(sub_df)
+                if export.columns:
+                    drop_columns = [column for column in sub_df.columns if
+                                    column not in [columns_map.get(col, [])] + [
+                                        'work_id']]
+                    sub_df.drop(columns=drop_columns, inplace=True)
+                dfs[WORKS_DF_KEY].drop(columns=[col], inplace=True)
+                if col in dfs:
+                    dfs[col] = pd.concat([dfs[col], sub_df],
+                                         axis=0).reset_index(drop=True)
+                else:
+                    dfs[col] = sub_df
+        drop_columns = [key for key in dfs.keys() if
+                        key in dfs[WORKS_DF_KEY].columns]
+        if drop_columns:
+            dfs[WORKS_DF_KEY].drop(columns=drop_columns, inplace=True)
+    if export.columns:
+        drop_columns = [col for col in dfs[WORKS_DF_KEY].columns if
+                        col not in raw_columns]
+        dfs[WORKS_DF_KEY].drop(columns=drop_columns, inplace=True)
+    if export.truncate:
+        for k in dfs.keys():
+            dfs[k] = dfs[k].applymap(truncate_string)
+    return dfs
