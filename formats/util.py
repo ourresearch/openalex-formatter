@@ -154,6 +154,21 @@ def join_lists(cell):
     return cell
 
 
+def reconstruct_abstract(row, inverted_columns):
+    word_positions = {}
+    for col in inverted_columns:
+        word = col.split('.', maxsplit=1)[-1]
+        indexes = row[col]
+        if not isinstance(indexes, list):
+            continue
+        for index in indexes:
+            word_positions[index] = word
+    # Create a list of words in correct order
+    max_index = max(word_positions.keys(), default=-1)
+    abstract = [word_positions.get(i, '') for i in range(max_index + 1)]
+    return ' '.join(abstract)
+
+
 def build_dataframes(export):
     dfs = dict()
     raw_columns = ['id']
@@ -162,6 +177,11 @@ def build_dataframes(export):
         df = pd.json_normalize(page)
         drop_columns = [col for col in df.columns if
                         'abstract_inverted' in col]
+        if 'open_access.is_oa' in df.columns:
+            df['abstract'] = df.apply(reconstruct_abstract,
+                                      inverted_columns=drop_columns,
+                                      axis=1)
+            df.loc[~df['open_access.is_oa'], 'abstract'] = ''
         df.drop(columns=drop_columns, inplace=True)
         if export.columns:
             raw_columns.extend(export.columns.split(','))
