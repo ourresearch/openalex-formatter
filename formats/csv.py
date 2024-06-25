@@ -13,11 +13,16 @@ def build_single_df(export):
     dfs = build_dataframes(export)
     for k in dfs.keys():
         if k == WORKS_DF_KEY:
-            dfs[k] = dfs[k].applymap(join_lists)
+            dfs[k] = dfs[k].map(join_lists)
             continue
-        dfs[k] = dfs[k].applymap(str).groupby('work_id').agg(
-            lambda x: '|'.join(x)).rename(
-            columns=lambda x: f'{k}.{x}' if x != 'work_id' else x)
+        for col in dfs[k].columns:
+            if dfs[k][col].apply(lambda x: isinstance(x, list)).any():
+                dfs[k][col] = dfs[k][col].apply(
+                    lambda x: '|'.join(map(str, x)) if isinstance(x, list) else x)
+        # Convert all cells to string
+        dfs[k] = dfs[k].map(str).groupby('work_id').agg(
+            lambda x: '|'.join(x)
+        ).rename(columns=lambda x: f'{k}.{x}' if x != 'work_id' else x)
         dfs[WORKS_DF_KEY] = dfs[WORKS_DF_KEY].merge(dfs[k],
                                                     how='left',
                                                     left_on='id',
