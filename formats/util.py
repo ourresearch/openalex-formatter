@@ -201,7 +201,7 @@ def build_dataframes(export):
             non_empty_lists = filtered_series[filtered_series.map(len) > 0]
             if not non_empty_lists.empty and isinstance(
                     non_empty_lists.iloc[0][0], dict):
-                col_list_form = df[col].tolist()
+                col_list_form = df[col].apply(lambda x: x if isinstance(x, list) else []).tolist()
                 set_work_ids(col_list_form, df)
                 sub_df = pd.json_normalize(
                     list(itertools.chain(*col_list_form)))
