@@ -26,10 +26,9 @@ def export_wos(export):
                     if line and line[0].split(' ')[1] == 'None':
                         line[0] = line[0].split(' ')[0]
                     lines.extend(line)
-
-            # write to file and add a blank line
-            file.write('\n'.join(lines))
-            file.write('\nER\n\n')
+                # write to file and add a blank line
+                file.write('\n'.join(lines))
+                file.write('\nER\n\n')
 
     return wos_filename
 
@@ -46,8 +45,10 @@ def instant_export(export):
             if line and line[0].split(' ')[1] == 'None':
                 line[0] = line[0].split(' ')[0]
             lines.extend(line)
-    buffer.write('\n'.join(lines))
-    buffer.write('\nER\n\n')
+        # write to file and add a blank line
+        buffer.write('\n'.join(lines))
+        buffer.write('\nER\n\n')
+        
     return buffer.getvalue()
 
 
