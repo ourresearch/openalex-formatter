@@ -261,15 +261,16 @@ def mega_csv_export():
         sort_by_order: Optional[str] = None,
     '''
     email = request.args.get('email')
-    if request.json.get('get_rows'):
-        request.json['entity'] = request.json['get_rows']
-        request.json.pop('get_rows')
+    request_json = request.json.copy()
+    if request_json.get('get_rows'):
+        request_json['entity'] = request_json['get_rows']
+        request_json.pop('get_rows')
     required_args = {'entity', 'filter_works', 'filter_aggs', 'show_columns'}
-    if any(arg not in request.json for arg in required_args):
+    if any(arg not in request_json for arg in required_args):
         abort_json(400, f'arguments must be specified - {", ".join(required_args)}')
         return
     all_valid_args = required_args.union({'sort_by_column', 'sort_by_order'})
-    export_args = {k: v for k, v in request.json.items() if k in all_valid_args}
+    export_args = {k: v for k, v in request_json.items() if k in all_valid_args}
     export = Export.query.filter(
         Export.format == 'mega-csv',
         Export.query_url is None,
@@ -277,7 +278,7 @@ def mega_csv_export():
         Export.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(
             minutes=15)
     ).first()
-    entity = request.json.get('entity')
+    entity = request_json.get('entity')
     if not export:
         export = Export(
             id=f'{entity}-mega-csv-{shortuuid.uuid()}',
