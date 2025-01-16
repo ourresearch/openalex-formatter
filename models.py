@@ -2,6 +2,7 @@ import datetime
 
 import shortuuid
 from sqlalchemy import Sequence
+from sqlalchemy.dialects.postgresql import JSONB
 
 from app import db, app_url
 
@@ -20,6 +21,7 @@ class Export(db.Model):
     truncate = db.Column(db.Boolean)
     select = db.Column(db.Text)
     columns = db.Column(db.Text)
+    args = db.Column(JSONB)
 
     def __init__(self, **kwargs):
         if 'format' in kwargs:

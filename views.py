@@ -85,17 +85,14 @@ def init_export_works():
 
     if not export_format:
         abort_json(400, '"format" argument is required')
-    if export_format in supported_formats:
+
+    if export_format in supported_formats and export_format != 'mega-csv': # Use mega-csv endpoint for mega-csv format (redshift)
         query_url = 'https://api.openalex.org/works'
         query_args = {}
 
+        # Build query parameters
         if query_filter := request.args.get('filter'):
             query_args['filter'] = query_filter
-
-        if select := request.args.get('select'):
-            query_args['select'] = select.strip(',')
-            if 'id' not in query_args:
-                query_args['select'] += ',id'
 
         if query_sort := request.args.get('sort'):
             query_args['sort'] = query_sort
@@ -106,22 +103,31 @@ def init_export_works():
         if query_group_bys_fields := request.args.get('group-bys'):
             query_args['group_bys'] = query_group_bys_fields
 
-        is_async = parse_bool(request.args.get('async', 'true'))
-        csv_truncate = parse_bool(request.args.get('truncate', 'false'))
+        # Build args dictionary for JSON column
+        export_args = {
+            'is_async': parse_bool(request.args.get('async', 'true')),
+            'truncate': parse_bool(request.args.get('truncate', 'false')),
+            'select': None,
+            'columns': request.args.get('columns')
+        }
+
+        # Handle select parameter
+        if select := request.args.get('select'):
+            select = select.strip(',')
+            if 'id' not in select:
+                select += ',id'
+            export_args['select'] = select
+            query_args['select'] = select
 
         if query_args:
             query_string = urlencode(query_args)
             query_url = f'{query_url}?{query_string}'
 
-        columns = request.args.get('columns')
-
+        # Query for existing export
         export = Export.query.filter(
             Export.format == export_format,
             Export.query_url == query_url,
-            Export.is_async == is_async,
-            Export.select == select,
-            Export.columns == columns,
-            Export.truncate == csv_truncate,
+            Export.args == export_args,  # JSON comparison
             Export.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(
                 minutes=15)
         ).first()
@@ -145,22 +151,26 @@ def init_export_works():
                     abort_json(500,
                                f"There was an error submitting your request to {query_url}.")
 
-            export = Export(query_url=query_url,
-                            format=export_format,
-                            is_async=is_async,
-                            select=select,
-                            columns=columns,
-                            truncate=csv_truncate)
+            # Create new export with args as JSON
+            export = Export(
+                query_url=query_url,
+                format=export_format,
+                args=export_args
+            )
             db.session.merge(export)
 
         if email:
-            export_email = ExportEmail(export_id=export.id,
-                                       requester_email=email)
+            export_email = ExportEmail(
+                export_id=export.id,
+                requester_email=email
+            )
             db.session.merge(export_email)
 
         db.session.commit()
-        if not is_async and export_format != 'group-bys-csv':
+
+        if not export_args['is_async'] and export_format != 'group-bys-csv':
             return instant_export_response(export)
+
         return jsonify(export.to_dict())
     else:
         abort_json(422,
@@ -237,6 +247,48 @@ def format_single_work(work_id, export_format):
         return response
     else:
         abort_json(422, 'supported formats are: "bib"')
+
+@app.route('/mega-csv', methods=['POST'])
+def mega_csv_export():
+    '''
+        entity: str,
+        filter_works: list,
+        filter_aggs: list,
+        show_columns: list,
+        sort_by_column: Optional[str] = None,
+        sort_by_order: Optional[str] = None,
+    '''
+    email = request.args.get('email')
+    required_args = {'entity', 'filter_works', 'filter_aggs', 'show_columns'}
+    if any(arg not in request.json for arg in required_args):
+        abort_json(400, f'arguments must be specified - {", ".join(required_args)}')
+        return
+    all_valid_args = required_args.union({'sort_by_column', 'sort_by_order'})
+    export_args = {k: v for k, v in request.json.items() if k in all_valid_args}
+    export = Export.query.filter(
+        Export.format == 'mega-csv',
+        Export.query_url is None,
+        Export.args == export_args,  # JSON comparison
+        Export.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(
+            minutes=15)
+    ).first()
+    if not export:
+        export = Export(
+            query_url=None,
+            format='mega-csv',
+            args=export_args
+        )
+
+        db.session.merge(export)
+        if email:
+            export_email = ExportEmail(
+                export_id=export.id,
+                requester_email=email
+            )
+            db.session.merge(export_email)
+        db.session.commit()
+
+    return jsonify(export.to_dict())
 
 
 @app.route('/', methods=["GET", "POST"])

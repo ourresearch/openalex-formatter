@@ -11,6 +11,7 @@ from app import app_url
 from app import db, logger
 from formats.csv import export_csv
 from formats.group_bys import export_group_bys_csv
+from formats.redshift.mega import export_mega_csv
 from formats.ris import export_ris
 from formats.wos_plaintext import export_wos
 from formats.zip import export_zip
@@ -30,6 +31,8 @@ def worker_run():
 
             if export.format == 'csv':
                 filename = export_csv(export)
+            elif export.format == 'mega-csv':
+                filename = export_mega_csv(export)
             elif export.format == 'wos-plaintext':
                 filename = export_wos(export)
             elif export.format == "group-bys-csv":
@@ -41,10 +44,13 @@ def worker_run():
             else:
                 raise ValueError(f'unknown format {export.format}')
 
-            file_format = supported_formats[export.format]
-            s3_client = boto3.client('s3')
-            s3_client.upload_file(filename, 'openalex-query-exports', f'{export_id}.{file_format}')
-            s3_object_name = f's3://openalex-query-exports/{export_id}.{file_format}'
+            if not filename.startswith('s3://'):
+                file_format = supported_formats[export.format]
+                s3_client = boto3.client('s3')
+                s3_client.upload_file(filename, 'openalex-query-exports', f'{export_id}.{file_format}')
+                s3_object_name = f's3://openalex-query-exports/{export_id}.{file_format}'
+            else:
+                s3_object_name = filename
 
             logger.info(f'uploaded {filename} to {s3_object_name}')
             export.result_url = f'{app_url}/export/{export.id}/download'

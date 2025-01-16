@@ -17,6 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger("openalex-formatter")
 
 supported_formats = {'csv': 'csv',
+                     'mega-csv': 'csv',
                      'wos-plaintext': 'txt',
                      'group-bys-csv': 'csv',
                      'ris': 'ris',
