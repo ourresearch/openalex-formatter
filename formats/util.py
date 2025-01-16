@@ -57,7 +57,7 @@ def paginate(export, fname=None, max_results=200 * 250):
 
         yield results
 
-        if not export.is_async:
+        if not export.args.get('is_async'):
             update_export_progress(export, 1)
             break
 
@@ -183,8 +183,9 @@ def build_dataframes(export):
                                       axis=1)
             df.loc[~df['open_access.is_oa'], 'abstract'] = ''
         df.drop(columns=drop_columns, inplace=True)
-        if export.columns:
-            raw_columns.extend(export.columns.split(','))
+        export_cols = export.args.get('columns')
+        if export_cols:
+            raw_columns.extend(export_cols.split(','))
             columns_map = object_columns_select(raw_columns)
             drop_columns = [col for col in df.columns if
                             col not in list(
@@ -206,7 +207,7 @@ def build_dataframes(export):
                 sub_df = pd.json_normalize(
                     list(itertools.chain(*col_list_form)))
                 sub_df = set_column_order(sub_df)
-                if export.columns:
+                if export.args.get('columns'):
                     drop_columns = [column for column in sub_df.columns if
                                     column not in [columns_map.get(col, [])] + [
                                         'work_id']]
@@ -221,11 +222,11 @@ def build_dataframes(export):
                         key in dfs[WORKS_DF_KEY].columns]
         if drop_columns:
             dfs[WORKS_DF_KEY].drop(columns=drop_columns, inplace=True)
-    if export.columns:
+    if export.args.get('columns'):
         drop_columns = [col for col in dfs[WORKS_DF_KEY].columns if
                         col not in raw_columns]
         dfs[WORKS_DF_KEY].drop(columns=drop_columns, inplace=True)
-    if export.truncate:
+    if export.args.get('truncate'):
         for k in dfs.keys():
             dfs[k] = dfs[k].applymap(truncate_string)
     return dfs
