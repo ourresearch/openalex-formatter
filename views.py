@@ -261,6 +261,9 @@ def mega_csv_export():
         sort_by_order: Optional[str] = None,
     '''
     email = request.args.get('email')
+    if request.json.get('get_rows'):
+        request.json['entity'] = request.json['get_rows']
+        request.json.pop('get_rows')
     required_args = {'entity', 'filter_works', 'filter_aggs', 'show_columns'}
     if any(arg not in request.json for arg in required_args):
         abort_json(400, f'arguments must be specified - {", ".join(required_args)}')
