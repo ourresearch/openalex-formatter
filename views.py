@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 
 import boto3
 import requests
+import shortuuid
 from flask import abort, jsonify, make_response, redirect, request
 import sentry_sdk
 
@@ -153,6 +154,7 @@ def init_export_works():
 
             # Create new export with args as JSON
             export = Export(
+                id=f'works-{export_format}-{shortuuid.uuid()}',
                 query_url=query_url,
                 format=export_format,
                 args=export_args
@@ -272,8 +274,10 @@ def mega_csv_export():
         Export.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(
             minutes=15)
     ).first()
+    entity = request.json.get('entity')
     if not export:
         export = Export(
+            id=f'{entity}-mega-csv-{shortuuid.uuid()}',
             query_url=None,
             format='mega-csv',
             args=export_args

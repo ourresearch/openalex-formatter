@@ -26,7 +26,6 @@ class Export(db.Model):
     def __init__(self, **kwargs):
         if 'format' in kwargs:
             self.format = kwargs['format']
-        self.id = f'works-{self.format}-{shortuuid.uuid()}'
         self.status = "submitted"
         self.progress = 0
         self.submitted = datetime.datetime.utcnow()
