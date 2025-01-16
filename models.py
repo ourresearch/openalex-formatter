@@ -16,7 +16,6 @@ class Export(db.Model):
     result_url = db.Column(db.Text)
     submitted = db.Column(db.DateTime)
     progress_updated = db.Column(db.DateTime)
-    progress_url = db.Column(db.Text)
     is_async = db.Column(db.Boolean)
     truncate = db.Column(db.Boolean)
     select = db.Column(db.Text)
@@ -30,8 +29,11 @@ class Export(db.Model):
         self.progress = 0
         self.submitted = datetime.datetime.utcnow()
         self.progress_updated = self.submitted
-        self.progress_url = f'{app_url}/export/{self.id}'
         super().__init__(**kwargs)
+
+    @property
+    def progress_url(self):
+        return f'{app_url}/export/{self.id}'
 
     def to_dict(self):
         return {
