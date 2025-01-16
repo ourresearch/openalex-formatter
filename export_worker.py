@@ -86,7 +86,7 @@ def fetch_export_id():
     with db.engine.connect() as connection:
         result = connection.execute(fetch_query.execution_options(autocommit=True))
         export_id = result.scalar()
-        connection.commit()
+        connection.connection.commit()
     logger.info(f'fetched export {export_id}, took {elapsed(job_time)} seconds')
     return export_id
 
