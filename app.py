@@ -23,6 +23,8 @@ supported_formats = {'csv': 'csv',
                      'ris': 'ris',
                      'zip': 'zip'}
 
+s3_key_formats = {'mega-csv': 'csv000'}
+
 libraries_to_mum = [
     'psycopg2',
 ]

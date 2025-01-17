@@ -82,24 +82,6 @@ def export_query_to_csv(
     handler.session.execute(unload_command)
     handler.session.commit()
 
-    key = s3_path.split("/")[-1]
-    current_key = f'{key}000'
-
-    copy_source = {'Bucket': exports_bucket,
-                   'Key': current_key}
-    # Copy with new name
-    s3_client.copy_object(
-        Bucket=exports_bucket,
-        CopySource=copy_source,
-        Key=key
-    )
-
-    # Delete old file
-    s3_client.delete_object(
-        Bucket=exports_bucket,
-        Key=current_key
-    )
-
     return s3_path
 
 

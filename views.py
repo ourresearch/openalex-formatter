@@ -10,7 +10,7 @@ import shortuuid
 from flask import abort, jsonify, make_response, redirect, request
 import sentry_sdk
 
-from app import app, supported_formats
+from app import app, supported_formats, s3_key_formats
 from app import db
 from bibtex import dump_bibtex
 from formats.util import parse_bool
@@ -195,22 +195,23 @@ def download_export(export_id):
     if export.format not in supported_formats:
         abort_json(422, f'Export {export_id} is not a supported format.')
 
-    file_format = supported_formats[export.format]
+    download_format = supported_formats[export.format]
+    s3_file_format = s3_key_formats.get(export.format) or download_format
 
     if not export.status == 'finished':
         abort_json(422, f'Export {export_id} is not finished.')
 
     if export.submitted:
-        filename = f'works-{export.submitted.strftime("%Y-%m-%dT%H-%M-%S")}.{file_format}'
+        filename = f'works-{export.submitted.strftime("%Y-%m-%dT%H-%M-%S")}.{download_format}'
     else:
-        filename = f'{export_id}.{file_format}'
+        filename = f'{export_id}.{download_format}'
 
     s3_client = boto3.client('s3')
     presigned_url = s3_client.generate_presigned_url(
         'get_object',
         Params={
             'Bucket': 'openalex-query-exports',
-            'Key': f'{export.id}.{file_format}',
+            'Key': f'{export.id}.{s3_file_format}',
             'ResponseContentDisposition': f'attachment; filename={filename}',
             'ResponseContentType': 'text/csv'
         },
