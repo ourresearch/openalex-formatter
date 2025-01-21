@@ -264,6 +264,12 @@ def mega_csv_export():
         sort_by_order: Optional[str] = None,
     '''
     email = request.args.get('email')
+    if email:
+        email = email.strip()
+        if not re.match(r'^.+@.+\..+$', email):
+            abort_json(400,
+                       f"email argument {email} doesn't look like an email address")
+
     request_json = request.json.copy()
     if request_json.get('get_rows'):
         request_json['entity'] = request_json['get_rows']
