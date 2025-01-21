@@ -76,7 +76,7 @@ def export_query_to_csv(
     DELIMITER ','
     HEADER
     ALLOWOVERWRITE
-    PARALLEL OFF
+    PARALLEL OFF;
     """)
 
     handler.session.execute(unload_command)
