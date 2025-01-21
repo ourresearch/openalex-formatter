@@ -76,7 +76,8 @@ def export_query_to_csv(
     DELIMITER ','
     HEADER
     ALLOWOVERWRITE
-    PARALLEL OFF;
+    PARALLEL OFF
+    MAXFILESIZE 100 GB;
     """)
 
     handler.session.execute(unload_command)
