@@ -195,24 +195,25 @@ def download_export(export_id):
     if export.format not in supported_formats:
         abort_json(422, f'Export {export_id} is not a supported format.')
 
-    download_format = supported_formats[export.format]
-    s3_file_format = s3_key_formats.get(export.format) or download_format
-
     if not export.status == 'finished':
         abort_json(422, f'Export {export_id} is not finished.')
 
+    s3_client = boto3.client('s3')
+    obj = s3_client.list_objects(Bucket='openalex-query-exports', Prefix=export_id)['Contents'][0]
+    extension = obj['Key'].split('.')[-1]
+    extension = extension if '00' not in extension else 'csv'
+
     if export.submitted:
         entity = export.args.get('entity', 'works')
-        filename = f'{entity}-{export.submitted.strftime("%Y-%m-%dT%H-%M-%S")}.{download_format}'
+        filename = f'{entity}-{export.submitted.strftime("%Y-%m-%dT%H-%M-%S")}.{extension}'
     else:
-        filename = f'{export_id}.{download_format}'
+        filename = f'{export_id}.{extension}'
 
-    s3_client = boto3.client('s3')
     presigned_url = s3_client.generate_presigned_url(
         'get_object',
         Params={
             'Bucket': 'openalex-query-exports',
-            'Key': f'{export.id}.{s3_file_format}',
+            'Key': obj['Key'],
             'ResponseContentDisposition': f'attachment; filename={filename}',
             'ResponseContentType': 'text/csv'
         },

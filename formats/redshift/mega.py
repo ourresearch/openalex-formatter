@@ -1,73 +1,34 @@
 import os
-import re
-from typing import Optional
-from datetime import datetime
+import time
 
 import boto3
+import requests
 from sqlalchemy import text
 
 from models import Export
-from .query_handler import RedshiftQueryHandler, get_entity_class
+from .db import Session
 
 aws_key, aws_secret = os.getenv('AWS_ACCESS_KEY_ID'), os.getenv('AWS_SECRET_ACCESS_KEY')
 s3_client = boto3.client('s3')
+emr_client = boto3.client('emr', region_name='us-east-1')
+
 exports_bucket = 'openalex-query-exports'
 
-def export_mega_csv(export: Export):
-    return export_query_to_csv(**export.args, s3_path=f's3://{exports_bucket}/{export.id}.csv')
+emr_service_role = 'EMR_DefaultRole'
+emr_instance_profile = 'EMR_EC2_DefaultRole'
 
 
-
-def export_query_to_csv(
-        entity: str,
-        filter_works: list,
-        filter_aggs: list,
-        show_columns: list,
-        s3_path: str,
-        sort_by_column: Optional[str] = None,
-        sort_by_order: Optional[str] = None,
-) -> str:
-    """
-    Exports a RedshiftQueryHandler query to CSV using Redshift's UNLOAD command.
-
-    Args:
-        entity: The entity type to query (e.g., "works", "authors", etc.)
-        filter_works: List of work filters
-        filter_aggs: List of aggregation filters
-        show_columns: List of columns to include
-        sort_by_column: Column to sort by
-        sort_by_order: Sort order ("asc" or "desc")
-
-    Returns:
-        str: The S3 path where the CSV was exported
-    """
-    # Initialize query handler
-    handler = RedshiftQueryHandler(
-        entity=entity,
-        filter_works=filter_works,
-        filter_aggs=filter_aggs,
-        show_columns=show_columns,
-        sort_by_column=sort_by_column,
-        sort_by_order=sort_by_order,
-        valid_columns=show_columns
-    )
-
-    # Build the query using the handler
-    entity_class = get_entity_class(entity)
-    query = handler.build_joins(entity_class)
-    query = handler.set_columns(query, entity_class)
-    query = handler.apply_work_filters(query)
-    query = handler.apply_entity_filters(query, entity_class)
-    query = handler.apply_sort(query, entity_class)
-    query = handler.apply_stats(query, entity_class)
-
-    # Convert SQLAlchemy query to raw SQL
-    sql_query = str(query.statement.compile(
-        compile_kwargs={"literal_binds": True}
-    ))
-
-    # Escape single quotes in the SQL query
-    sql_query = sql_query.replace("'", "''")
+def export_mega_csv(export: Export) -> str:
+    payload = export.args.copy()
+    payload['get_rows'] = payload.get('get_rows') or payload.get('entity')
+    payload.pop('entity')
+    payload = {'query': payload}
+    r = requests.post('https://api.openalex.org/searches', json=payload)
+    r.raise_for_status()
+    j = r.json()
+    sql_query = j['redshift_sql']
+    s3_path = f's3://{exports_bucket}/{export.id}.csv'
+    s = Session()
     # Create UNLOAD command and wrap it in text()
     unload_command = text(f"""
     UNLOAD ('{sql_query}')
@@ -79,26 +40,117 @@ def export_query_to_csv(
     PARALLEL OFF;
     """)
 
-    handler.session.execute(unload_command)
-    handler.session.commit()
+    s.execute(unload_command)
+    s.commit()
+    source_prefix = export.id
+    export_parts = [obj for obj in s3_client.list_objects(Bucket=exports_bucket, Prefix=source_prefix)['Contents']]
+    if len(export_parts) == 1:
+        return s3_path
 
-    return s3_path
+    zip_dest_key = export.id + '.zip'
+    job_id = create_zip_job(source_prefix, zip_dest_key)
+    print(f'Created EMR zip job {job_id} for {zip_dest_key}')
+    wait_for_job_completion(job_id)
+    for obj in export_parts:
+        s3_client.delete_object(Bucket=exports_bucket, Key=obj['Key'])
+    return f's3://{exports_bucket}/{zip_dest_key}'
+
+def create_zip_job(file_prefix, destination_key):
+    cluster = emr_client.run_job_flow(
+        Name='Zip Redshift UNLOAD Files',
+        ReleaseLabel='emr-6.10.0',
+        ServiceRole=emr_service_role,
+        JobFlowRole=emr_instance_profile,
+        LogUri=f's3://{exports_bucket}/emr-logs/',
+        Tags=[{
+            'Key': 'for-use-with-amazon-emr-managed-policies',
+            'Value': 'true'
+        }],
+        Instances={
+            'InstanceGroups': [
+                {
+                    'Name': 'Master',
+                    'Market': 'ON_DEMAND',
+                    'InstanceRole': 'MASTER',
+                    'InstanceType': 'm5.4xlarge',
+                    'InstanceCount': 1,
+                    'EbsConfiguration': {
+                        'EbsBlockDeviceConfigs': [
+                            {
+                                'VolumeSpecification': {
+                                    'VolumeType': 'gp2',
+                                    'SizeInGB': 300
+                                },
+                                'VolumesPerInstance': 1
+                            }
+                        ]
+                    }
+                }
+            ],
+            'KeepJobFlowAliveWhenNoSteps': False,
+            'TerminationProtected': False
+        },
+        Steps=[
+            {
+                'Name': 'Zip Files',
+                'ActionOnFailure': 'TERMINATE_CLUSTER',
+                'HadoopJarStep': {
+                    'Jar': 'command-runner.jar',
+                    'Args': [
+                        'bash', '-c',
+                        f'''
+                        set -e  # Exit on any error
+                        echo "Creating directory..."
+                        mkdir -p /tmp/unload_data
+                        cd /tmp/unload_data
+
+                        echo "Copying files from S3..."
+                        # List all files with the prefix and download each one
+                        aws s3api list-objects-v2 \
+                            --bucket {exports_bucket} \
+                            --prefix {file_prefix} \
+                            --query 'Contents[].Key' \
+                            --output text | tr '\t' '\n' | while read -r key; do
+                            echo "Downloading $key..."
+                            aws s3 cp "s3://{exports_bucket}/$key" .
+                        done
+
+                        echo "Checking copied files..."
+                        ls -la
+
+                        echo "Creating zip file..."
+                        zip -r ../output.zip ./*
+
+                        echo "Checking zip file..."
+                        ls -la ../output.zip
+
+                        echo "Copying zip back to S3..."
+                        aws s3 cp ../output.zip s3://{exports_bucket}/{destination_key}
+                        '''
+                    ]
+                }
+            }
+        ],
+        VisibleToAllUsers=True,
+        Applications=[{'Name': 'Hadoop'}]
+    )
+
+    return cluster['JobFlowId']
 
 
-# Example usage:
-"""
-filter_works = [
-    {"column_id": "year", "value": 2020, "operator": "is"}
-]
-show_columns = ["paper_id", "original_title", "year"]
+def wait_for_job_completion(job_id):
+    while True:
+        status = emr_client.describe_cluster(ClusterId=job_id)['Cluster']['Status']
+        print(f'EMR Zip Job ({job_id}) status - {status}')
+        state = status['State']
 
-export_path = export_query_to_csv(
-    entity="works",
-    filter_works=filter_works,
-    filter_aggs=[],
-    show_columns=show_columns,
-    aws_access_key_id="your_key",
-    aws_secret_access_key="your_secret"
-)
-print(f"Export completed: {export_path}")
-"""
+        if state in ['TERMINATED', 'TERMINATED_WITH_ERRORS']:
+            break
+        elif state == 'WAITING':
+            steps = emr_client.list_steps(ClusterId=job_id)['Steps']
+            if all(step['Status']['State'] in ['COMPLETED'] for step in steps):
+                break
+
+        time.sleep(30)
+
+    return state == 'TERMINATED'
