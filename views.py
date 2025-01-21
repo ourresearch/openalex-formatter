@@ -202,7 +202,8 @@ def download_export(export_id):
         abort_json(422, f'Export {export_id} is not finished.')
 
     if export.submitted:
-        filename = f'works-{export.submitted.strftime("%Y-%m-%dT%H-%M-%S")}.{download_format}'
+        entity = export.args.get('entity', 'works')
+        filename = f'{entity}-{export.submitted.strftime("%Y-%m-%dT%H-%M-%S")}.{download_format}'
     else:
         filename = f'{export_id}.{download_format}'
 
