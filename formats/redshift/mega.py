@@ -26,7 +26,7 @@ def export_mega_csv(export: Export) -> str:
     r = requests.post('https://api.openalex.org/searches', json=payload)
     r.raise_for_status()
     j = r.json()
-    sql_query = j['redshift_sql']
+    sql_query = j['redshift_sql'].replace("'", "''")
     s3_path = f's3://{exports_bucket}/{export.id}.csv'
     s = Session()
     # Create UNLOAD command and wrap it in text()
@@ -36,6 +36,7 @@ def export_mega_csv(export: Export) -> str:
     CREDENTIALS 'aws_access_key_id={aws_key};aws_secret_access_key={aws_secret}'
     DELIMITER ','
     HEADER
+    ADDQUOTES
     ALLOWOVERWRITE
     PARALLEL OFF;
     """)
