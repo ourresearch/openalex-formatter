@@ -282,7 +282,6 @@ def mega_csv_export():
     export_args = {k: v for k, v in request_json.items() if k in all_valid_args}
     export = Export.query.filter(
         Export.format == 'mega-csv',
-        Export.query_url is None,
         Export.args == export_args,  # JSON comparison
         Export.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(
             minutes=15)

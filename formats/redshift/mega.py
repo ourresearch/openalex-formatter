@@ -26,9 +26,17 @@ def export_mega_csv(export: Export) -> str:
     r = requests.post('https://api.openalex.org/searches', json=payload)
     r.raise_for_status()
     j = r.json()
+    
+    # Save the query URL to the export object
+    export.query_url = f"https://staging.openalex.org/searches/{j['id']}"
+    s = Session()
+    s.add(export)
+    s.commit()
+
     sql_query = j['redshift_sql'].replace("'", "''")
     s3_path = f's3://{exports_bucket}/{export.id}.csv'
     s = Session()
+
     # Create UNLOAD command and wrap it in text()
     unload_command = text(f"""
     UNLOAD ('{sql_query}')
