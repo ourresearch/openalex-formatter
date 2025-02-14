@@ -5,6 +5,7 @@ import boto3
 import requests
 from sqlalchemy import text
 
+from app import db, logger
 from models import Export
 from .db import Session
 
@@ -29,9 +30,9 @@ def export_mega_csv(export: Export) -> str:
     
     # Save the query URL to the export object
     export.query_url = f"https://staging.openalex.org/searches/{j['id']}"
-    s = Session()
-    s.add(export)
-    s.commit()
+    db.session.add(export)
+    db.session.commit()
+    logger.info(f"Added Search ID to mega export: {j['id']}")
 
     sql_query = j['redshift_sql'].replace("'", "''")
     s3_path = f's3://{exports_bucket}/{export.id}.csv'
@@ -39,15 +40,15 @@ def export_mega_csv(export: Export) -> str:
 
     # Create UNLOAD command and wrap it in text()
     unload_command = text(f"""
-    UNLOAD ('{sql_query}')
-    TO '{s3_path}'
-    CREDENTIALS 'aws_access_key_id={aws_key};aws_secret_access_key={aws_secret}'
-    DELIMITER ','
-    HEADER
-    ADDQUOTES
-    ALLOWOVERWRITE
-    PARALLEL OFF;
-    """)
+        UNLOAD ('{sql_query}')
+        TO '{s3_path}'
+        CREDENTIALS 'aws_access_key_id={aws_key};aws_secret_access_key={aws_secret}'
+        DELIMITER ','
+        HEADER
+        ADDQUOTES
+        ALLOWOVERWRITE
+        PARALLEL OFF;
+        """)
 
     s.execute(unload_command)
     s.commit()
@@ -58,11 +59,13 @@ def export_mega_csv(export: Export) -> str:
 
     zip_dest_key = export.id + '.zip'
     job_id = create_zip_job(source_prefix, zip_dest_key)
-    print(f'Created EMR zip job {job_id} for {zip_dest_key}')
+    logger.info(f'Created EMR zip job {job_id} for {zip_dest_key}')
+    
     wait_for_job_completion(job_id)
     for obj in export_parts:
         s3_client.delete_object(Bucket=exports_bucket, Key=obj['Key'])
     return f's3://{exports_bucket}/{zip_dest_key}'
+
 
 def create_zip_job(file_prefix, destination_key):
     cluster = emr_client.run_job_flow(

@@ -10,7 +10,7 @@ import shortuuid
 from flask import abort, jsonify, make_response, redirect, request
 import sentry_sdk
 
-from app import app, supported_formats, s3_key_formats
+from app import app, supported_formats, s3_key_formats, logger
 from app import db
 from bibtex import dump_bibtex
 from formats.util import parse_bool
@@ -280,14 +280,19 @@ def mega_csv_export():
         return
     all_valid_args = required_args.union({'sort_by_column', 'sort_by_order'})
     export_args = {k: v for k, v in request_json.items() if k in all_valid_args}
+    
+    # Look for an identical export in the last 15 minutes
     export = Export.query.filter(
         Export.format == 'mega-csv',
         Export.args == export_args,  # JSON comparison
         Export.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(
             minutes=15)
     ).first()
-    entity = request_json.get('entity')
-    if not export:
+
+    if export:
+        logger.info(f"Mega export requested that matched existing export {export.id}")
+    else:
+        entity = request_json.get('entity')
         export = Export(
             id=f'{entity}-mega-csv-{shortuuid.uuid()}',
             query_url=None,
@@ -303,6 +308,7 @@ def mega_csv_export():
             )
             db.session.merge(export_email)
         db.session.commit()
+        logger.info(f"Saved new mega export {export.id}")
 
     return jsonify(export.to_dict())
 

@@ -9,6 +9,7 @@ from sqlalchemy import text
 from app import app, supported_formats
 from app import app_url
 from app import db, logger
+from app import EXPORT_TABLE
 from formats.csv import export_csv
 from formats.group_bys import export_group_bys_csv
 from formats.redshift.mega import export_mega_csv
@@ -62,23 +63,24 @@ def worker_run():
         else:
             sleep(1)
 
-
+last_log_time = 0
 def fetch_export_id():
-    logger.info("looking for new jobs")
+    global last_log_time
+    last_log_time = time() if time() - last_log_time >= 60 and logger.info("looking for jobs to process") is None else last_log_time
 
-    fetch_query = text("""
+    fetch_query = text(f"""
         with fetched_export as (
             select id
-            from export
+            from """ + EXPORT_TABLE + """
             where status = 'submitted'
             order by submitted
             limit 1
             for update skip locked
         )
-        update export
+        update """ + EXPORT_TABLE + """
         set status = 'running', progress_updated = now()
         from fetched_export
-        where export.id = fetched_export.id
+        where """ + EXPORT_TABLE + """.id = fetched_export.id
         returning fetched_export.id;
     """)
 
@@ -87,11 +89,13 @@ def fetch_export_id():
         result = connection.execute(fetch_query.execution_options(autocommit=True))
         export_id = result.scalar()
         connection.connection.commit()
-    logger.info(f'fetched export {export_id}, took {elapsed(job_time)} seconds')
+    
+    if export_id:
+        logger.info(f'fetched export {export_id}, took {elapsed(job_time)} seconds')
+    
     return export_id
 
 
 if __name__ == "__main__":
     with app.app_context():
         worker_run()
-

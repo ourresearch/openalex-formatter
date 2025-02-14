@@ -8,6 +8,10 @@ from flask_compress import Compress
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.pool import NullPool
 
+ENVIRONMENT = os.getenv('ENVIRONMENT', "production")
+EXPORT_TABLE = 'export_dev' if ENVIRONMENT == 'dev' else 'export'
+EXPORT_EMAIL_TABLE = 'export_email_dev' if ENVIRONMENT == 'dev' else 'export_email'
+
 logging.basicConfig(
     stream=sys.stdout,
     level=logging.DEBUG,

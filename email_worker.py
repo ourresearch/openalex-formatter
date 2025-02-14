@@ -6,7 +6,7 @@ import sentry_sdk
 from sqlalchemy import text
 
 from app import app
-from app import db, logger
+from app import db, logger, EXPORT_EMAIL_TABLE, EXPORT_TABLE
 from models import Export, ExportEmail
 from emailer import send_email
 from util import elapsed
@@ -48,26 +48,28 @@ def email_result_link(export, email):
     )
 
 
+last_log_time = 0
 def fetch_email_request_id():
-    logger.info("looking for results that are ready to send")
+    global last_log_time
+    last_log_time = time() if time() - last_log_time >= 60 and logger.info("looking for results that are ready to send") is None else last_log_time
 
-    fetch_query = text("""
+    fetch_query = text(f"""
         with fetched_request as (
-            select export_email.id
+            select """ + EXPORT_EMAIL_TABLE + """.id
             from 
-                export_email
-                join export on export_email.export_id = export.id
+                """ + EXPORT_EMAIL_TABLE + """
+                join """ + EXPORT_TABLE + """ on """ + EXPORT_EMAIL_TABLE + """.export_id = """ + EXPORT_TABLE + """.id
             where 
-                export.status = 'finished'
-                and export_email.send_started is null
-            order by export_email.requested_at
+                """ + EXPORT_TABLE + """.status = 'finished'
+                and """ + EXPORT_EMAIL_TABLE + """.send_started is null
+            order by """ + EXPORT_EMAIL_TABLE + """.requested_at
             limit 1
             for update skip locked
         )
-        update export_email
+        update """ + EXPORT_EMAIL_TABLE + """
         set send_started = now()
         from fetched_request
-        where export_email.id = fetched_request.id
+        where """ + EXPORT_EMAIL_TABLE + """.id = fetched_request.id
         returning fetched_request.id;
     """)
 
@@ -76,11 +78,13 @@ def fetch_email_request_id():
         trans = connection.begin()
         export_request_id = connection.execute(fetch_query).scalar()
         trans.commit()
+        
+    if export_request_id:
         logger.info(f'fetched export email request {export_request_id}, took {elapsed(job_time)} seconds')
+    
     return export_request_id
 
 
 if __name__ == "__main__":
     with app.app_context():
         worker_run()
-

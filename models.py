@@ -1,15 +1,21 @@
 import datetime
+import os
 
 import shortuuid
 from sqlalchemy import Sequence
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app import db, app_url
+from app import EXPORT_TABLE, EXPORT_EMAIL_TABLE
 
 
 class Export(db.Model):
+    __tablename__ = EXPORT_TABLE
+
     id = db.Column(db.Text, primary_key=True)
     query_url = db.Column(db.Text)
+    format = db.Column(db.Text)
+    status = db.Column(db.Text)
     format = db.Column(db.Text)
     status = db.Column(db.Text)
     progress = db.Column(db.Float)
@@ -53,10 +59,11 @@ class Export(db.Model):
 
 
 class ExportEmail(db.Model):
+    __tablename__ = EXPORT_EMAIL_TABLE
     id = db.Column(db.Integer,
                    Sequence('export_email_id_seq', start=1, increment=1),
                    primary_key=True)
-    export_id = db.Column(db.Text, db.ForeignKey('export.id'))
+    export_id = db.Column(db.Text, db.ForeignKey(f'{EXPORT_TABLE}.id'))
     requester_email = db.Column(db.Text)
     requested_at = db.Column(db.DateTime)
     sent_at = db.Column(db.DateTime)
