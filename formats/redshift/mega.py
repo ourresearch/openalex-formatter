@@ -29,7 +29,7 @@ def export_mega_csv(export: Export) -> str:
     j = r.json()
     
     # Save the query URL to the export object
-    export.query_url = f"https://staging.openalex.org/searches/{j['id']}"
+    export.query_url = f"https://staging.openalex.org/s/{j['id']}"
     db.session.add(export)
     db.session.commit()
     logger.info(f"Added Search ID to mega export: {j['id']}")
