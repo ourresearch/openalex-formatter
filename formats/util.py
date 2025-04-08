@@ -9,7 +9,7 @@ from requests import JSONDecodeError
 
 from app import db, logger
 
-TRUNCATE_MAX_CHARS = 32_740
+TRUNCATE_MAX_CHARS = 30_000
 
 WORKS_DF_KEY = 'works'
 
