@@ -3,13 +3,13 @@ import os
 from time import sleep, time
 
 import boto3
-import sentry_sdk
 from sqlalchemy import text
 
 from app import app, supported_formats
 from app import app_url
 from app import db, logger
 from app import EXPORT_TABLE
+from sentry_setup import init_sentry
 from formats.csv import export_csv
 from formats.group_bys import export_group_bys_csv
 from formats.redshift.mega import export_mega_csv
@@ -20,7 +20,7 @@ from models import Export
 
 from util import elapsed
 
-sentry_sdk.init(dsn=os.environ.get('SENTRY_DSN'),)
+init_sentry()
 
 
 def worker_run():

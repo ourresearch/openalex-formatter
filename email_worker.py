@@ -2,7 +2,6 @@ import datetime
 import os
 from time import sleep, time
 
-import sentry_sdk
 from sqlalchemy import text
 
 from app import app
@@ -10,9 +9,9 @@ from app import db, logger, EXPORT_EMAIL_TABLE, EXPORT_TABLE
 from models import Export, ExportEmail
 from emailer import send_email
 from util import elapsed
+from sentry_setup import init_sentry
 
-sentry_sdk.init(dsn=os.environ.get('SENTRY_DSN'),)
-
+init_sentry()
 
 def worker_run():
     while True:
