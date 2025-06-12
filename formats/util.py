@@ -61,7 +61,8 @@ def paginate(export, fname=None, max_results=200 * 250):
             update_export_progress(export, 1)
             break
 
-        update_export_progress(export, results_count / total_count)
+        percent_complete = results_count / total_count if total_count > 0 else 1
+        update_export_progress(export, percent_complete)
         if fname:
             logger.info(f'wrote {results_count}/{total_count} to {fname}')
         page += 1
