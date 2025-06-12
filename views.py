@@ -8,10 +8,10 @@ import boto3
 import requests
 import shortuuid
 from flask import abort, jsonify, make_response, redirect, request
+import sentry_sdk
 
 from app import app, supported_formats, s3_key_formats, logger
 from app import db
-from sentry_setup import init_sentry
 from bibtex import dump_bibtex
 from formats.util import parse_bool
 from models import Export, ExportEmail
@@ -19,7 +19,8 @@ from formats.csv import instant_export as csv_instant_export
 from formats.ris import instant_export as ris_instant_export
 from formats.wos_plaintext import instant_export as wos_instant_export
 
-init_sentry()
+sentry_sdk.init(dsn=os.environ.get('SENTRY_DSN'), )
+
 
 def abort_json(status_code, msg):
     body_dict = {
