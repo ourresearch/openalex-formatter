@@ -281,6 +281,9 @@ def mega_csv_export():
     all_valid_args = required_args.union({'sort_by_column', 'sort_by_order'})
     export_args = {k: v for k, v in request_json.items() if k in all_valid_args}
     
+    jwt_token = request.headers.get("Authorization")
+    export_args['jwt_token'] = jwt_token
+
     # Look for an identical export in the last 15 minutes
     export = Export.query.filter(
         Export.format == 'mega-csv',

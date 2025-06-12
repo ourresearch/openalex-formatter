@@ -20,16 +20,18 @@ emr_instance_profile = 'EMR_EC2_DefaultRole'
 
 
 def export_mega_csv(export: Export) -> str:
-    payload = export.args.copy()
-    payload['get_rows'] = payload.get('get_rows') or payload.get('entity')
-    payload.pop('entity')
-    payload = {'query': payload}
-    r = requests.post('https://api.openalex.org/searches', json=payload)
+    query = export.args.copy()
+    query['get_rows'] = query.get('get_rows') or query.get('entity')
+    query.pop('entity')
+    query.pop('jwt_token')
+    payload = {'query': query}
+    headers = {"Authorization": export.args.get('jwt_token')}
+    r = requests.post('https://api.openalex.org/searches', json=payload, headers=headers)
     r.raise_for_status()
     j = r.json()
     
     # Save the query URL to the export object
-    export.query_url = f"https://staging.openalex.org/s/{j['id']}"
+    export.query_url = f"https://www.openalex.org/s/{j['id']}"
     db.session.add(export)
     db.session.commit()
     logger.info(f"Added Search ID to mega export: {j['id']}")
