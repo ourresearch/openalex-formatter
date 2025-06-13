@@ -18,6 +18,7 @@ exports_bucket = 'openalex-query-exports'
 emr_service_role = 'EMR_DefaultRole'
 emr_instance_profile = 'EMR_EC2_DefaultRole'
 
+OPENALEX_API_URL = os.getenv('OPENALEX_API_URL')
 
 def export_mega_csv(export: Export) -> str:
     query = export.args.copy()
@@ -26,7 +27,7 @@ def export_mega_csv(export: Export) -> str:
     query.pop('jwt_token')
     payload = {'query': query}
     headers = {"Authorization": export.args.get('jwt_token')}
-    r = requests.post('https://api.openalex.org/searches', json=payload, headers=headers)
+    r = requests.post(OPENALEX_API_URL + '/analytics', json=payload, headers=headers)
     r.raise_for_status()
     j = r.json()
     
