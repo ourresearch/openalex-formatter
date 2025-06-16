@@ -26,6 +26,8 @@ type_map = {
     "erratum": "ERRT",
     "grant": "GEN",
     "letter": "LETTER",
+    'retraction': "GEN",
+    'libguides': "GEN",
 }
 
 
@@ -81,6 +83,9 @@ def build_ris_entry(work):
 
     if work.get('abstract_inverted_index') and (work.get('open_access') or {}).get('is_oa'):
         ris_entry.append(f"AB  - {unravel_index(work['abstract_inverted_index'])}")
+
+    if work['type'] == 'retraction':
+        ris_entry.append(f"N1  - This is a RETRACTION of \"{work['title']}\".")
 
     ris_entry.append('ER  -\n')
 
