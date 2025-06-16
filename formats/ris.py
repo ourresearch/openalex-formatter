@@ -67,19 +67,19 @@ def build_ris_entry(work):
                 ris_entry.append(f"C1  - {affiliation}")
 
     # Additional optional fields
-    if work['language']:
-        ris_entry.append(f"LA  - {work['language']}")
-    if work['keywords']:
-        for kw in work['keywords']:
-            ris_entry.append(f"KW  - {kw['display_name']}")
-    if work['biblio'].get('volume'):
-        ris_entry.append(f"VL  - {work['biblio']['volume']}")
-    if work['biblio'].get('issue'):
-        ris_entry.append(f"IS  - {work['biblio']['issue']}")
-    if work['biblio'].get('first_page'):
-        ris_entry.append(f"SP  - {work['biblio']['first_page']}")
-    if work['biblio'].get('last_page'):
-        ris_entry.append(f"EP  - {work['biblio']['last_page']}")
+    if work.get('language'):
+        ris_entry.append(f"LA  - {work.get('language', '')}")
+    if work.get('keywords'):
+        for kw in work.get('keywords', []):
+            ris_entry.append(f"KW  - {kw.get('display_name', '')}")
+    if work.get('biblio').get('volume'):
+        ris_entry.append(f"VL  - {work.get('biblio', {}).get('volume', '')}")
+    if work.get('biblio').get('issue'):
+        ris_entry.append(f"IS  - {work.get('biblio', {}).get('issue', '')}")
+    if work.get('biblio').get('first_page'):
+        ris_entry.append(f"SP  - {work.get('biblio', {}).get('first_page', '')}")
+    if work.get('biblio').get('last_page'):
+        ris_entry.append(f"EP  - {work.get('biblio', {}).get('last_page', '')}")
 
     if work.get('abstract_inverted_index') and (work.get('open_access') or {}).get('is_oa'):
         ris_entry.append(f"AB  - {unravel_index(work['abstract_inverted_index'])}")
