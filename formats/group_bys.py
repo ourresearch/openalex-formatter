@@ -5,6 +5,8 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 import requests
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from app import openalex_api_key
+
 GROUP_LIMIT = 15000  # max number of groups for a single group_by
 
 
@@ -58,6 +60,9 @@ def parse_query_url(query_url):
 
 
 def get_total_count(query):
+    # Add API key
+    separator = '&' if '?' in query else '?'
+    query = f"{query}{separator}api-key={openalex_api_key}"
     r = requests.get(query)
     return r.json()["meta"]["count"]
 
@@ -66,7 +71,7 @@ def fetch_group_data(query, group_by, per_page=50):
     groups = []
     cursor = "*"
     while cursor is not None and len(groups) < GROUP_LIMIT:
-        url = f"{query}&group_by={group_by}&per_page={per_page}&cursor={cursor}&mailto=team@ourresearch.org"
+        url = f"{query}&group_by={group_by}&per_page={per_page}&cursor={cursor}&mailto=team@ourresearch.org&api-key={openalex_api_key}"
         result = get_request(url)
         cursor = result["meta"]["next_cursor"]
         for group in result["group_by"]:

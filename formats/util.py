@@ -7,7 +7,7 @@ import pandas as pd
 import requests
 from requests import JSONDecodeError
 
-from app import db, logger
+from app import db, logger, openalex_api_key
 
 TRUNCATE_MAX_CHARS = 30_000
 
@@ -26,6 +26,8 @@ def construct_query_url(cursor, export, per_page):
     query_args = parse_qs(parsed_query_url.query)
     query_args['cursor'] = cursor
     query_args['per_page'] = per_page
+    query_args['api-key'] = openalex_api_key
+
     parsed_query_url = parsed_query_url._replace(
         query=urlencode(query_args, doseq=True)
     )
@@ -99,7 +101,9 @@ def unravel_index(inverted_index):
 def get_first_page(export):
     params = {
         'page': '1',
-        'per-page': '200'
+        'per-page': '200',
+        'api-key': openalex_api_key,
+
     }
     return requests.get(export.query_url, params=params).json()
 

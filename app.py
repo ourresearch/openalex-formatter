@@ -59,3 +59,4 @@ Compress(app)
 
 app_url = os.getenv('APP_URL')
 mailgun_api_key = os.getenv('MAILGUN_API_KEY')
+openalex_api_key = os.getenv('OPENALEX_API_KEY')
