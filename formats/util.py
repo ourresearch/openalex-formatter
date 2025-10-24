@@ -63,10 +63,12 @@ def paginate(export, fname=None, max_results=200 * 250):
             update_export_progress(export, 1)
             break
 
-        percent_complete = results_count / total_count if total_count > 0 else 1
-        update_export_progress(export, percent_complete)
-        if fname:
-            logger.info(f'wrote {results_count}/{total_count} to {fname}')
+        # Update progress every 3 pages instead of every page (faster)
+        if page % 3 == 0 or cursor is None:  # Always update on last page
+            percent_complete = results_count / total_count if total_count > 0 else 1
+            update_export_progress(export, percent_complete)
+            if fname:
+                logger.info(f'wrote {results_count}/{total_count} to {fname}')
         page += 1
 
 
