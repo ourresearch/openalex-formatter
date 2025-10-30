@@ -1,5 +1,6 @@
 import datetime
 import itertools
+import time
 from math import ceil
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
@@ -47,6 +48,7 @@ def paginate(export, fname=None, max_results=200 * 250):
         query_url = construct_query_url(cursor, export, per_page)
         try:
             r = s.get(query_url)
+            time.sleep(0.3)
             j = r.json()
         except JSONDecodeError:
             per_page = ceil(per_page / 2)
@@ -106,7 +108,9 @@ def get_first_page(export):
         'api-key': openalex_api_key,
 
     }
-    return requests.get(export.query_url, params=params).json()
+    response = requests.get(export.query_url, params=params)
+    time.sleep(0.3)
+    return response.json()
 
 
 def truncate_format_str(cell_str):
