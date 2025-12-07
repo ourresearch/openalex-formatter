@@ -104,6 +104,9 @@ def init_export_works():
         if query_group_bys_fields := request.args.get('group-bys'):
             query_args['group_bys'] = query_group_bys_fields
 
+        if include_xpac := request.args.get('include_xpac'):
+            query_args['include_xpac'] = include_xpac
+
         # Build args dictionary for JSON column
         export_args = {
             'is_async': parse_bool(request.args.get('async', 'true')),
