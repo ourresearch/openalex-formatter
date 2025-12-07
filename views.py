@@ -87,7 +87,7 @@ def init_export_works():
     if not export_format:
         abort_json(400, '"format" argument is required')
 
-    if export_format in supported_formats and export_format != 'mega-csv': # Use mega-csv endpoint for mega-csv format (redshift)
+    if export_format in supported_formats:
         query_url = 'https://api.openalex.org/works'
         query_args = {}
 
@@ -255,68 +255,6 @@ def format_single_work(work_id, export_format):
         return response
     else:
         abort_json(422, 'supported formats are: "bib"')
-
-@app.route('/mega-csv', methods=['POST'])
-def mega_csv_export():
-    '''
-        entity: str,
-        filter_works: list,
-        filter_aggs: list,
-        show_columns: list,
-        sort_by_column: Optional[str] = None,
-        sort_by_order: Optional[str] = None,
-    '''
-    email = request.args.get('email')
-    if email:
-        email = email.strip()
-        if not re.match(r'^.+@.+\..+$', email):
-            abort_json(400,
-                       f"email argument {email} doesn't look like an email address")
-
-    request_json = request.json.copy()
-    if request_json.get('get_rows'):
-        request_json['entity'] = request_json['get_rows']
-        request_json.pop('get_rows')
-    required_args = {'entity', 'filter_works', 'filter_aggs', 'show_columns'}
-    if any(arg not in request_json for arg in required_args):
-        abort_json(400, f'arguments must be specified - {", ".join(required_args)}')
-        return
-    all_valid_args = required_args.union({'sort_by_column', 'sort_by_order'})
-    export_args = {k: v for k, v in request_json.items() if k in all_valid_args}
-    
-    jwt_token = request.headers.get("Authorization")
-    export_args['jwt_token'] = jwt_token
-
-    # Look for an identical export in the last 15 minutes
-    export = Export.query.filter(
-        Export.format == 'mega-csv',
-        Export.args == export_args,  # JSON comparison
-        Export.progress_updated > datetime.datetime.utcnow() - datetime.timedelta(
-            minutes=15)
-    ).first()
-
-    if export:
-        logger.info(f"Mega export requested that matched existing export {export.id}")
-    else:
-        entity = request_json.get('entity')
-        export = Export(
-            id=f'{entity}-mega-csv-{shortuuid.uuid()}',
-            query_url=None,
-            format='mega-csv',
-            args=export_args
-        )
-
-        db.session.merge(export)
-        if email:
-            export_email = ExportEmail(
-                export_id=export.id,
-                requester_email=email
-            )
-            db.session.merge(export_email)
-        db.session.commit()
-        logger.info(f"Saved new mega export {export.id}")
-
-    return jsonify(export.to_dict())
 
 
 @app.route('/', methods=["GET", "POST"])

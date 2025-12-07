@@ -21,13 +21,12 @@ logging.basicConfig(
 logger = logging.getLogger("openalex-formatter")
 
 supported_formats = {'csv': 'csv',
-                     'mega-csv': 'csv',
                      'wos-plaintext': 'txt',
                      'group-bys-csv': 'csv',
                      'ris': 'ris',
                      'zip': 'zip'}
 
-s3_key_formats = {'mega-csv': 'csv000'}
+s3_key_formats = {}
 
 libraries_to_mum = [
     'psycopg2',

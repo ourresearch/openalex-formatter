@@ -12,7 +12,6 @@ from app import db, logger
 from app import EXPORT_TABLE
 from formats.csv import export_csv
 from formats.group_bys import export_group_bys_csv
-from formats.redshift.mega import export_mega_csv
 from formats.ris import export_ris
 from formats.wos_plaintext import export_wos
 from formats.zip import export_zip
@@ -40,8 +39,6 @@ def worker_run():
 
                 if export.format == 'csv':
                     filename = export_csv(export)
-                elif export.format == 'mega-csv':
-                    filename = export_mega_csv(export)
                 elif export.format == 'wos-plaintext':
                     filename = export_wos(export)
                 elif export.format == "group-bys-csv":
