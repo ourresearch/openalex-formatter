@@ -32,9 +32,14 @@ type_map = {
 
 
 def build_ris_entry(work):
-    ris_entry = [f"TY  - {type_map[work['type']]}",
-                 f"TI  - {work['title']}",
-                 f"PY  - {work['publication_year']}"]
+    ris_entry = [f"TY  - {type_map[work['type']]}"]
+
+    # title is null when no source gives the work one; omit the tag like the
+    # other optional fields below rather than writing "TI  - None"
+    if work.get('title'):
+        ris_entry.append(f"TI  - {work['title']}")
+
+    ris_entry.append(f"PY  - {work['publication_year']}")
 
     if get_nested_value(work, 'primary_location', 'source',
                         'host_organization_name'):

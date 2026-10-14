@@ -22,8 +22,9 @@ def export_wos(export):
             for work in page:
                 for key, processor in WOS_PROCESSORS.items():
                     line = processor(work)
-                    # stripe None values
-                    if line and line[0].split(' ')[1] == 'None':
+                    # strip None values (the whole value, so a title such
+                    # as "None of the above" is kept)
+                    if line and line[0].split(' ', 1)[1] == 'None':
                         line[0] = line[0].split(' ')[0]
                     lines.extend(line)
                 # write to file and add a blank line
@@ -42,7 +43,7 @@ def instant_export(export):
     for work in first_page['results']:
         for key, processor in WOS_PROCESSORS.items():
             line = processor(work)
-            if line and line[0].split(' ')[1] == 'None':
+            if line and line[0].split(' ', 1)[1] == 'None':
                 line[0] = line[0].split(' ')[0]
             lines.extend(line)
         # write to file and add a blank line
@@ -253,7 +254,7 @@ WOS_PROCESSORS = {
     'PT': process_pub_type,
     'AU': process_authors_au,
     'AF': process_authors_af,
-    'TI': lambda work: [f'TI {work.get("display_name")}'],
+    'TI': lambda work: [f'TI {work.get("display_name") or ""}'],
     'SO': process_source_name,
     'LA': process_language,
     'DT': process_document_type,
